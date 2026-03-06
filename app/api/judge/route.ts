@@ -6,11 +6,19 @@ import {
   normalizeJudgePayload,
 } from '@/lib/prompts/optimizer';
 import { assertConfig, createClient, getEffectiveConfig, getModelMeta } from '@/lib/server/bailian';
+import {
+  enforceOrigin,
+  enforceRateLimit,
+  getClientIp,
+  verifySubmissionProof,
+} from '@/lib/server/security';
 import type { ApiConfig, JudgePromptPayload, JudgeResult, OptimizedResult } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const { originalPrompt, candidates, config } = await request.json();
+    enforceOrigin(request);
+
+    const { originalPrompt, candidates, config, submissionProof } = await request.json();
 
     if (!originalPrompt || typeof originalPrompt !== 'string') {
       return NextResponse.json({ error: 'Original prompt is required' }, { status: 400 });
@@ -27,6 +35,13 @@ export async function POST(request: NextRequest) {
     if (validCandidates.length === 0) {
       return NextResponse.json({ error: 'No valid candidates to judge' }, { status: 400 });
     }
+
+    if (!submissionProof || typeof submissionProof !== 'string') {
+      return NextResponse.json({ error: 'Submission proof is required' }, { status: 400 });
+    }
+
+    enforceRateLimit(`judge:${getClientIp(request)}`);
+    verifySubmissionProof(submissionProof, originalPrompt, validCandidates);
 
     const effectiveConfig = getEffectiveConfig(config as Partial<ApiConfig>);
     effectiveConfig.judgeSystemPrompt ||= DEFAULT_JUDGE_SYSTEM_PROMPT;

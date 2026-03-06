@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
   isLoading: boolean;
+  footer?: ReactNode;
+  submitDisabled?: boolean;
 }
 
 const EXAMPLES = [
@@ -16,7 +19,12 @@ const EXAMPLES = [
   '我要做短视频脚本，请帮我把需求改造成高质量提示词。',
 ];
 
-export function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
+export function PromptInput({
+  onSubmit,
+  isLoading,
+  footer,
+  submitDisabled = false,
+}: PromptInputProps) {
   const [prompt, setPrompt] = useState('');
 
   const handleSubmit = () => {
@@ -69,7 +77,7 @@ export function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
         </p>
         <Button
           onClick={handleSubmit}
-          disabled={!prompt.trim() || isLoading}
+          disabled={!prompt.trim() || isLoading || submitDisabled}
           size="lg"
           className="h-12 rounded-full bg-[var(--accent)] px-6 text-[15px] font-semibold text-[var(--accent-foreground)] hover:bg-[var(--accent-strong)]"
         >
@@ -77,6 +85,8 @@ export function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
           {isLoading ? '正在并行优化...' : '开始优化'}
         </Button>
       </div>
+
+      {footer}
     </section>
   );
 }

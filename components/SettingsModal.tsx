@@ -31,6 +31,7 @@ export function SettingsModal({
   initialConfig,
 }: SettingsModalProps) {
   const [config, setConfig] = useState<ApiConfig>(initialConfig);
+  const isProduction = process.env.NODE_ENV === 'production';
 
   useEffect(() => {
     setConfig(initialConfig);
@@ -103,27 +104,33 @@ export function SettingsModal({
           </CardHeader>
 
           <CardContent className="space-y-8 p-6">
-            <section className="grid gap-6 md:grid-cols-2">
-              <Field label="Base URL" hint="百炼 OpenAI 兼容接口地址">
-                <input
-                  type="text"
-                  value={config.baseUrl}
-                  placeholder={BAILIAN_BASE_URL}
-                  onChange={(event) => setConfig({ ...config, baseUrl: event.target.value })}
-                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
-                />
-              </Field>
+            {isProduction ? (
+              <section className="rounded-[28px] border border-[var(--line)] bg-[var(--panel-soft)] p-5 text-sm leading-6 text-[var(--ink-soft)]">
+                线上模式已隐藏浏览器侧 Base URL 与 API Key 输入，真实百炼凭证只从 Vercel 环境变量读取。
+              </section>
+            ) : (
+              <section className="grid gap-6 md:grid-cols-2">
+                <Field label="Base URL" hint="百炼 OpenAI 兼容接口地址">
+                  <input
+                    type="text"
+                    value={config.baseUrl}
+                    placeholder={BAILIAN_BASE_URL}
+                    onChange={(event) => setConfig({ ...config, baseUrl: event.target.value })}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                  />
+                </Field>
 
-              <Field label="API Key" hint="支持浏览器本地存储，也支持 Vercel 环境变量兜底">
-                <input
-                  type="password"
-                  value={config.apiKey}
-                  placeholder="sk-..."
-                  onChange={(event) => setConfig({ ...config, apiKey: event.target.value })}
-                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
-                />
-              </Field>
-            </section>
+                <Field label="API Key" hint="开发模式下可走浏览器本地配置">
+                  <input
+                    type="password"
+                    value={config.apiKey}
+                    placeholder="sk-..."
+                    onChange={(event) => setConfig({ ...config, apiKey: event.target.value })}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                  />
+                </Field>
+              </section>
+            )}
 
             <section className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
               <div className="rounded-[28px] border border-[var(--line)] bg-white/80 p-5">

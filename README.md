@@ -49,6 +49,10 @@
 ```bash
 BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 BAILIAN_API_KEY=sk-xxxx
+APP_SIGNING_SECRET=replace-with-a-long-random-secret
+RATE_LIMIT_MAX=8
+RATE_LIMIT_WINDOW_MS=60000
+MAX_PROMPT_CHARS=4000
 JUDGE_MODEL=qwen3.5-plus
 OPTIMIZER_TEMPERATURE=0.7
 OPTIMIZER_MAX_TOKENS=2200
@@ -57,6 +61,22 @@ JUDGE_MAX_TOKENS=2400
 ```
 
 如果设置面板中没有填写，服务端会自动回退到这些环境变量。
+
+## 安全策略
+
+当前版本已经加入公开访问所需的基础保护：
+
+- 生产环境忽略浏览器上传的 `API Key`，只读取 Vercel 服务端环境变量
+- `/api/optimize` 与 `/api/judge` 都有基于 IP 的限流
+- `/api/judge` 需要 `/api/optimize` 签发的短期 `submissionProof`
+- 限制用户输入提示词长度，避免单次成本失控
+- 拒绝非本站来源的跨站请求
+
+说明：
+
+- 当前限流实现为进程内存版，适合小范围分享和第一层防护
+- 如果后面访问量变大，建议把限流切到 Redis / KV
+- 如果后面需要更强防刷，再叠加 Turnstile 或登录机制
 
 ## 两份核心提示词
 

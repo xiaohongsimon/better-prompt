@@ -17,6 +17,8 @@ import {
   DEFAULT_OPTIMIZER_MODEL_IDS,
   type ApiConfig,
   type JudgeResult,
+  type JudgeResponse,
+  type OptimizeResponse,
   type OptimizedResult,
 } from '@/types';
 
@@ -36,6 +38,7 @@ const DEFAULT_CONFIG: ApiConfig = {
 };
 
 export default function Home() {
+  const isProduction = process.env.NODE_ENV === 'production';
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<OptimizedResult[]>([]);
   const [rankings, setRankings] = useState<JudgeResult[]>([]);
@@ -44,7 +47,6 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
   const [originalPrompt, setOriginalPrompt] = useState('');
-
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
@@ -87,7 +89,7 @@ export default function Home() {
         body: JSON.stringify({ prompt, config }),
       });
 
-      const optimizeData = await optimizeRes.json();
+      const optimizeData = (await optimizeRes.json()) as OptimizeResponse & { error?: string };
       if (!optimizeRes.ok) {
         throw new Error(optimizeData.error || 'Failed to optimize prompt');
       }
@@ -101,10 +103,11 @@ export default function Home() {
           originalPrompt: prompt,
           candidates: optimizeData.results,
           config,
+          submissionProof: optimizeData.submissionProof,
         }),
       });
 
-      const judgeData = await judgeRes.json();
+      const judgeData = (await judgeRes.json()) as JudgeResponse & { error?: string };
       if (!judgeRes.ok) {
         throw new Error(judgeData.error || 'Failed to judge prompts');
       }
@@ -219,7 +222,23 @@ export default function Home() {
             className="space-y-6"
           >
             <div className="rounded-[34px] border border-white/60 bg-white/72 p-6 shadow-[0_24px_70px_rgba(34,41,57,0.1)] backdrop-blur">
-              <PromptInput onSubmit={handleSubmit} isLoading={isLoading} />
+              <PromptInput
+                onSubmit={handleSubmit}
+                isLoading={isLoading}
+                footer={
+                  <div className="space-y-3">
+                    {isProduction ? (
+                      <div className="rounded-[24px] border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-3 text-sm leading-6 text-[var(--ink-soft)]">
+                        公开访问模式已启用服务端密钥保护、IP 限流、请求来源校验与短期评审凭证。百炼 API Key 不会下发到浏览器。
+                      </div>
+                    ) : (
+                      <div className="rounded-[24px] border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-3 text-sm leading-6 text-[var(--ink-soft)]">
+                        当前是开发模式，可直接使用本地设置或服务端环境变量。
+                      </div>
+                    )}
+                  </div>
+                }
+              />
             </div>
 
             <div className="rounded-[34px] border border-white/60 bg-white/72 p-6 shadow-[0_24px_70px_rgba(34,41,57,0.1)] backdrop-blur">

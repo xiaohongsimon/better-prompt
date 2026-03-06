@@ -5,15 +5,29 @@ import {
   extractJsonObject,
 } from '@/lib/prompts/optimizer';
 import { assertConfig, createClient, getEffectiveConfig, getModelMeta } from '@/lib/server/bailian';
+import {
+  createSubmissionProof,
+  enforceOrigin,
+  enforceRateLimit,
+  getClientIp,
+  validatePrompt,
+  verifyTurnstileToken,
+} from '@/lib/server/security';
 import type { ApiConfig, OptimizedResult, OptimizerPromptPayload } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const { prompt, config } = await request.json();
+    enforceOrigin(request);
+
+    const { prompt, config, turnstileToken } = await request.json();
 
     if (!prompt || typeof prompt !== 'string') {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
+
+    validatePrompt(prompt);
+    enforceRateLimit(`optimize:${getClientIp(request)}`);
+    await verifyTurnstileToken(turnstileToken, request);
 
     const effectiveConfig = getEffectiveConfig(config as Partial<ApiConfig>);
     effectiveConfig.optimizerSystemPrompt ||= DEFAULT_OPTIMIZER_SYSTEM_PROMPT;
@@ -65,7 +79,10 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({ results });
+    return NextResponse.json({
+      results,
+      submissionProof: createSubmissionProof(prompt, results.filter((item) => !item.error)),
+    });
   } catch (error) {
     console.error('Optimize API error:', error);
 

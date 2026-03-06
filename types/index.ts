@@ -75,6 +75,16 @@ export interface AppState {
   judgeSummary: string;
 }
 
+export interface OptimizeResponse {
+  results: OptimizedResult[];
+  submissionProof: string;
+}
+
+export interface JudgeResponse {
+  rankings: JudgeResult[];
+  judgeSummary: string;
+}
+
 export interface ApiConfig {
   baseUrl: string;
   apiKey: string;

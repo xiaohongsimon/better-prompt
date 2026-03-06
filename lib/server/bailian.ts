@@ -8,12 +8,13 @@ import {
 } from '@/types';
 
 export function getEffectiveConfig(input?: Partial<ApiConfig>): ApiConfig {
+  const isProduction = process.env.NODE_ENV === 'production';
   const optimizerSystemPrompt = input?.optimizerSystemPrompt?.trim() || process.env.OPTIMIZER_SYSTEM_PROMPT?.trim() || '';
   const judgeSystemPrompt = input?.judgeSystemPrompt?.trim() || process.env.JUDGE_SYSTEM_PROMPT?.trim() || '';
 
   return {
-    baseUrl: input?.baseUrl?.trim() || process.env.BAILIAN_BASE_URL?.trim() || BAILIAN_BASE_URL,
-    apiKey: input?.apiKey?.trim() || process.env.BAILIAN_API_KEY?.trim() || '',
+    baseUrl: (isProduction ? '' : input?.baseUrl?.trim()) || process.env.BAILIAN_BASE_URL?.trim() || BAILIAN_BASE_URL,
+    apiKey: (isProduction ? '' : input?.apiKey?.trim()) || process.env.BAILIAN_API_KEY?.trim() || '',
     optimizerModels: input?.optimizerModels?.length ? input.optimizerModels : DEFAULT_OPTIMIZER_MODEL_IDS,
     judgeModel: input?.judgeModel?.trim() || process.env.JUDGE_MODEL?.trim() || DEFAULT_JUDGE_MODEL,
     optimizerTemperature: Number(input?.optimizerTemperature ?? process.env.OPTIMIZER_TEMPERATURE ?? 0.7),
