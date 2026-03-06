@@ -21,7 +21,7 @@ import {
   type OptimizedResult,
 } from '@/types';
 
-const STORAGE_KEY = 'betterprompt_config_v3';
+const STORAGE_KEY = 'betterprompt_config_v4';
 
 const DEFAULT_CONFIG: ApiConfig = {
   baseUrl: BAILIAN_BASE_URL,
@@ -44,6 +44,9 @@ export default function Home() {
   const [results, setResults] = useState<OptimizedResult[]>([]);
   const [rankings, setRankings] = useState<JudgeResult[]>([]);
   const [judgeSummary, setJudgeSummary] = useState('');
+  const [synthesizedBestPrompt, setSynthesizedBestPrompt] = useState('');
+  const [synthesisRationale, setSynthesisRationale] = useState('');
+  const [appliedAdvantages, setAppliedAdvantages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
@@ -82,6 +85,9 @@ export default function Home() {
     setResults([]);
     setRankings([]);
     setJudgeSummary('');
+    setSynthesizedBestPrompt('');
+    setSynthesisRationale('');
+    setAppliedAdvantages([]);
     setPhase('optimizing');
 
     try {
@@ -174,6 +180,9 @@ export default function Home() {
 
       setRankings(judgeData.rankings);
       setJudgeSummary(judgeData.judgeSummary || '');
+      setSynthesizedBestPrompt(judgeData.synthesizedBestPrompt || '');
+      setSynthesisRationale(judgeData.synthesisRationale || '');
+      setAppliedAdvantages(judgeData.appliedAdvantages || []);
       setPhase('done');
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'An unexpected error occurred');
@@ -187,6 +196,9 @@ export default function Home() {
     setResults([]);
     setRankings([]);
     setJudgeSummary('');
+    setSynthesizedBestPrompt('');
+    setSynthesisRationale('');
+    setAppliedAdvantages([]);
     setPhase('idle');
   };
 
@@ -194,11 +206,11 @@ export default function Home() {
   const bestResult = bestRanking
     ? results.find((result) => result.model === bestRanking.model)
     : undefined;
-  const returnedCount = results.length;
 
   const handleCopyBest = async () => {
-    if (!bestResult?.optimizedPrompt) return;
-    await navigator.clipboard.writeText(bestResult.optimizedPrompt);
+    const value = synthesizedBestPrompt || bestResult?.optimizedPrompt;
+    if (!value) return;
+    await navigator.clipboard.writeText(value);
   };
 
   const handleExportMarkdown = () => {
@@ -207,6 +219,9 @@ export default function Home() {
       judgeSummary,
       rankings,
       results,
+      synthesizedBestPrompt,
+      synthesisRationale,
+      appliedAdvantages,
     });
 
     const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
@@ -223,151 +238,97 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[var(--page-bg)] text-[var(--ink-strong)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(241,184,98,0.28),transparent_24%),radial-gradient(circle_at_84%_14%,rgba(74,114,148,0.18),transparent_20%),linear-gradient(180deg,#f5efe3_0%,#f8f4ed_32%,#f2ece3_100%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(159,76,33,0.35),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(220,160,94,0.18),transparent_24%),radial-gradient(circle_at_85%_12%,rgba(78,106,137,0.12),transparent_18%),linear-gradient(180deg,#f4efe6_0%,#f1ebe2_100%)]" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 py-6 md:px-8 md:py-8">
+      <div className="relative mx-auto max-w-[1480px] px-5 py-6 md:px-8 md:py-8">
         <motion.header
-          initial={{ opacity: 0, y: -18 }}
+          initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[36px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.62)] px-6 py-6 shadow-[0_25px_80px_rgba(24,36,58,0.08)] backdrop-blur"
+          className="flex flex-wrap items-start justify-between gap-6 rounded-[36px] border border-white/70 bg-white/58 px-6 py-6 shadow-[0_20px_80px_rgba(22,32,45,0.06)] backdrop-blur"
         >
-          <div className="flex flex-wrap items-start justify-between gap-6">
-            <div className="max-w-3xl">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.38em] text-[var(--accent-strong)]">
-                BetterPrompt
-              </p>
-              <h1 className="mt-3 text-4xl font-semibold leading-[1.02] text-[var(--ink-strong)] md:text-6xl">
-                让四个模型先竞速，
-                <br />
-                再让一个裁判定胜负。
-              </h1>
-            </div>
+          <div className="max-w-3xl">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--accent-strong)]">
+              BetterPrompt
+            </p>
+            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)] md:text-5xl">
+              多模型提示词优化工作台
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--ink-soft)]">
+              四个模型并发重写，Kimi 负责排序与综合定稿。
+            </p>
+          </div>
 
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCopyBest}
+              disabled={!synthesizedBestPrompt && !bestResult?.optimizedPrompt}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/82 px-4 py-2 text-sm text-[var(--ink-strong)] disabled:opacity-40"
+            >
+              <Copy className="size-4" />
+              复制最佳版
+            </button>
+            <button
+              onClick={handleExportMarkdown}
+              disabled={results.length === 0}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/82 px-4 py-2 text-sm text-[var(--ink-strong)] disabled:opacity-40"
+            >
+              <Download className="size-4" />
+              导出
+            </button>
+            <button
+              onClick={handleReset}
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/82 px-4 py-2 text-sm text-[var(--ink-strong)]"
+            >
+              <RotateCcw className="size-4" />
+              重置
+            </button>
             <button
               onClick={() => setShowSettings(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-[rgba(18,28,45,0.08)] bg-white/78 px-4 py-2 text-sm text-[var(--ink-strong)] transition hover:border-[var(--accent)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/82 px-4 py-2 text-sm text-[var(--ink-strong)]"
             >
               <Settings className="size-4" />
               设置
             </button>
           </div>
-
-          <div className="mt-8 grid gap-3 md:grid-cols-4">
-            <StatChip label="优化模型" value={`${config.optimizerModels.length} 并发`} />
-            <StatChip label="裁判模型" value={config.judgeModel} />
-            <StatChip
-              label="返回方式"
-              value={phase === 'optimizing' ? '竞速中' : phase === 'judging' ? '裁判中' : '先到先看'}
-            />
-            <StatChip label="运行环境" value={isProduction ? 'Public / Protected' : 'Development'} />
-          </div>
         </motion.header>
 
-        <div className="mt-8 grid gap-8 xl:grid-cols-[0.92fr_1.08fr]">
-          <section className="space-y-6">
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="rounded-[36px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.66)] p-6 shadow-[0_24px_72px_rgba(24,36,58,0.08)] backdrop-blur"
-            >
-              <PromptInput
-                onSubmit={handleSubmit}
-                isLoading={phase === 'optimizing' || phase === 'judging'}
-                footer={
-                  <div className="rounded-[28px] border border-[rgba(18,28,45,0.08)] bg-[rgba(247,242,235,0.84)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
-                    默认只把最有价值的信息给用户：先展示四个候选提示词，裁判分数和优缺点在结果卡片里折叠展开。
-                  </div>
-                }
-              />
-            </motion.div>
+        <section className="mt-6 rounded-[36px] border border-white/70 bg-white/62 p-6 shadow-[0_20px_80px_rgba(22,32,45,0.06)] backdrop-blur">
+          <PromptInput
+            onSubmit={handleSubmit}
+            isLoading={phase === 'optimizing' || phase === 'judging'}
+            footer={
+              <div className="rounded-[26px] border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
+                {isProduction
+                  ? '公开访问模式启用服务端密钥保护与限流，用户端不会接触百炼 API Key。'
+                  : '开发模式下可使用本地配置或服务端环境变量。'}
+              </div>
+            }
+          />
+        </section>
 
-            <div className="grid gap-3">
-              <PipelineRow
-                title="Model Race"
-                hint="四个模型互不等待，先完成先落卡"
-                status={`${returnedCount}/${config.optimizerModels.length}`}
-              />
-              <PipelineRow
-                title="Judge"
-                hint="四个候选全部到齐后才开始评分"
-                status={
-                  phase === 'judging'
-                    ? 'Running'
-                    : phase === 'done'
-                      ? 'Done'
-                      : returnedCount === config.optimizerModels.length && returnedCount > 0
-                        ? 'Queued'
-                        : 'Standby'
-                }
-              />
+        <section className="mt-6">
+          {error ? (
+            <div className="mb-6 rounded-[28px] border border-[rgba(180,58,38,0.12)] bg-[rgba(255,241,237,0.9)] px-5 py-4 text-sm leading-6 text-[rgb(132,39,27)]">
+              {error}
             </div>
-          </section>
+          ) : null}
 
-          <section className="space-y-6">
-            <div className="rounded-[36px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.66)] px-5 py-5 shadow-[0_24px_72px_rgba(24,36,58,0.08)] backdrop-blur">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-[var(--accent-strong)]">
-                    Live Board
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-                    {phase === 'optimizing'
-                      ? '模型正在并发返回。结果会按完成顺序出现在下面。'
-                      : phase === 'judging'
-                        ? '四个候选都已可见，裁判正在生成最终排名。'
-                        : '先看原始结果，再决定要不要展开细节。'}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={handleCopyBest}
-                    disabled={!bestResult?.optimizedPrompt}
-                    className="inline-flex items-center gap-2 rounded-full border border-[rgba(18,28,45,0.08)] bg-white/78 px-4 py-2 text-sm text-[var(--ink-strong)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Copy className="size-4" />
-                    复制最佳版本
-                  </button>
-                  <button
-                    onClick={handleExportMarkdown}
-                    disabled={results.length === 0}
-                    className="inline-flex items-center gap-2 rounded-full border border-[rgba(18,28,45,0.08)] bg-white/78 px-4 py-2 text-sm text-[var(--ink-strong)] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Download className="size-4" />
-                    导出报告
-                  </button>
-                  <button
-                    onClick={handleReset}
-                    className="inline-flex items-center gap-2 rounded-full border border-[rgba(18,28,45,0.08)] bg-white/78 px-4 py-2 text-sm text-[var(--ink-strong)]"
-                  >
-                    <RotateCcw className="size-4" />
-                    重置
-                  </button>
-                </div>
-              </div>
+          {results.length > 0 ? (
+            <RankingList
+              rankings={rankings}
+              results={results}
+              judgeSummary={judgeSummary}
+              judgeStatus={phase === 'judging' ? 'running' : rankings.length > 0 ? 'done' : 'idle'}
+              synthesizedBestPrompt={synthesizedBestPrompt}
+              synthesisRationale={synthesisRationale}
+              appliedAdvantages={appliedAdvantages}
+            />
+          ) : (
+            <div className="rounded-[34px] border border-dashed border-[var(--line)] bg-white/36 px-8 py-16 text-center text-sm leading-7 text-[var(--ink-soft)]">
+              结果区会先展示四个模型卡片，再在最下方给出 Kimi 的排序与综合版本。
             </div>
-
-            {error ? (
-              <div className="rounded-[30px] border border-[rgba(180,58,38,0.12)] bg-[rgba(255,240,236,0.9)] px-5 py-4 text-sm leading-6 text-[rgb(132,39,27)]">
-                {error}
-              </div>
-            ) : null}
-
-            {results.length > 0 ? (
-              <RankingList
-                rankings={rankings}
-                results={results}
-                judgeSummary={judgeSummary}
-                judgeStatus={phase === 'judging' ? 'running' : rankings.length > 0 ? 'done' : 'idle'}
-              />
-            ) : (
-              <div className="rounded-[36px] border border-dashed border-[rgba(18,28,45,0.12)] bg-[rgba(255,255,255,0.44)] px-8 py-14 text-center text-sm leading-7 text-[var(--ink-soft)]">
-                这里会先出现四张候选卡片。哪个模型先返回，哪个先显示。裁判不会阻塞结果展示。
-              </div>
-            )}
-          </section>
-        </div>
+          )}
+        </section>
       </div>
 
       <SettingsModal
@@ -380,51 +341,22 @@ export default function Home() {
   );
 }
 
-function StatChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[26px] border border-[rgba(18,28,45,0.08)] bg-[rgba(247,242,235,0.82)] px-4 py-4">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--accent-strong)]">
-        {label}
-      </div>
-      <div className="mt-2 truncate text-sm text-[var(--ink-strong)]">{value}</div>
-    </div>
-  );
-}
-
-function PipelineRow({
-  title,
-  hint,
-  status,
-}: {
-  title: string;
-  hint: string;
-  status: string;
-}) {
-  return (
-    <div className="rounded-[30px] border border-[rgba(255,255,255,0.7)] bg-[rgba(255,255,255,0.62)] px-5 py-5 shadow-[0_18px_60px_rgba(24,36,58,0.06)] backdrop-blur">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm font-medium text-[var(--ink-strong)]">{title}</p>
-          <p className="mt-1 text-sm leading-6 text-[var(--ink-soft)]">{hint}</p>
-        </div>
-        <div className="rounded-full border border-[rgba(18,28,45,0.08)] bg-[rgba(247,242,235,0.82)] px-3 py-1 text-sm text-[var(--ink-soft)]">
-          {status}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function buildMarkdownReport({
   originalPrompt,
   judgeSummary,
   rankings,
   results,
+  synthesizedBestPrompt,
+  synthesisRationale,
+  appliedAdvantages,
 }: {
   originalPrompt: string;
   judgeSummary: string;
   rankings: JudgeResult[];
   results: OptimizedResult[];
+  synthesizedBestPrompt: string;
+  synthesisRationale: string;
+  appliedAdvantages: string[];
 }) {
   const sections = [
     '# BetterPrompt Report',
@@ -433,34 +365,34 @@ function buildMarkdownReport({
     '',
     originalPrompt,
     '',
+    '## Kimi 综合最佳版',
+    '',
+    synthesizedBestPrompt || '暂无',
+    '',
+    '## 综合逻辑',
+    '',
+    synthesisRationale || '暂无',
+    '',
+    ...(appliedAdvantages.length
+      ? ['## 吸收的优点', '', ...appliedAdvantages.map((item) => `- ${item}`), '']
+      : []),
+    '## 排名总览',
+    '',
+    ...rankings.flatMap((ranking) => [
+      `### #${ranking.rank} ${ranking.modelName}`,
+      '',
+      `- 总分：${ranking.score}`,
+      `- 结论：${ranking.verdict}`,
+      '',
+    ]),
     '## 裁判总结',
     '',
     judgeSummary || '暂无',
     '',
-    '## 排名总览',
-    '',
-    ...rankings.flatMap((ranking) => [
-      `### #${ranking.rank} ${ranking.modelName} (${ranking.provider})`,
-      '',
-      `- 总分：${ranking.score}`,
-      `- 结论：${ranking.verdict}`,
-      `- 维度分：清晰度 ${ranking.dimensionScores.clarity} / 完整性 ${ranking.dimensionScores.completeness} / 可控性 ${ranking.dimensionScores.controllability} / 专业度 ${ranking.dimensionScores.professionality} / 可执行性 ${ranking.dimensionScores.executionLikelihood}`,
-      `- 优势：${ranking.strengths.join('；') || '暂无'}`,
-      `- 不足：${ranking.weaknesses.join('；') || '暂无'}`,
-      `- 改进方向：${ranking.improvementFocus.join('；') || '暂无'}`,
-      '',
-    ]),
     '## 全部候选详情',
     '',
     ...results.flatMap((optimized) => [
       `### ${optimized.modelName}`,
-      '',
-      `- 模型 ID：${optimized.model}`,
-      `- 优化策略：${optimized.strategySummary || '暂无'}`,
-      `- 关键升级点：${optimized.keyUpgrades.join('；') || '暂无'}`,
-      `- 适用场景：${optimized.applicableScenarios.join('；') || '暂无'}`,
-      '',
-      '#### 优化后的提示词',
       '',
       '```text',
       optimized.optimizedPrompt || optimized.error || '暂无',

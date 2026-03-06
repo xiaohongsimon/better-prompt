@@ -88,6 +88,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       rankings,
       judgeSummary: normalized.overallSummary,
+      synthesizedBestPrompt: normalized.synthesizedBestPrompt,
+      synthesisRationale: normalized.synthesisRationale,
+      appliedAdvantages: normalized.appliedAdvantages,
     });
   } catch (error) {
     console.error('Judge API error:', error);

@@ -35,6 +35,9 @@ export interface JudgePromptPayload {
     };
   }>;
   overall_summary: string;
+  synthesized_best_prompt: string;
+  synthesis_rationale: string;
+  applied_advantages: string[];
 }
 
 export interface OptimizedResult {
@@ -83,6 +86,9 @@ export interface OptimizeResponse {
 export interface JudgeResponse {
   rankings: JudgeResult[];
   judgeSummary: string;
+  synthesizedBestPrompt: string;
+  synthesisRationale: string;
+  appliedAdvantages: string[];
 }
 
 export interface ApiConfig {
@@ -107,7 +113,7 @@ export const DEFAULT_OPTIMIZER_MODEL_IDS: string[] = [
   'MiniMax-M2.5',
 ];
 
-export const DEFAULT_JUDGE_MODEL = 'qwen3.5-plus';
+export const DEFAULT_JUDGE_MODEL = 'kimi-k2.5';
 
 export const MODEL_NAME_MAP: ReadonlyMap<string, (typeof AVAILABLE_MODELS)[number]> = new Map(
   AVAILABLE_MODELS.map((model) => [model.id, model])

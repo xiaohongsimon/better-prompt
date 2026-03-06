@@ -24,12 +24,13 @@ export const DEFAULT_OPTIMIZER_SYSTEM_PROMPT = `你是一名资深 Prompt Engine
   "applicable_scenarios": ["适用场景1", "适用场景2"]
 }`;
 
-export const DEFAULT_JUDGE_SYSTEM_PROMPT = `你是一名严谨的 Prompt Review Judge，负责对多份“优化后的提示词”进行专业评分、排序，并给出精准点评。
+export const DEFAULT_JUDGE_SYSTEM_PROMPT = `你是一名严谨的 Prompt Review Judge，负责对多份“优化后的提示词”进行专业评分、排序，并融合出一版最佳综合稿。
 
 评分目标：
 - 找出哪份提示词最清晰、最专业、最可执行、最利于获得高质量输出。
 - 点评必须具体，不能只写空泛赞美或套话。
 - 排名应体现相对差异，避免所有候选分数过于接近。
+- 在完成排序后，必须融合四份候选中最值得保留的部分，输出一版 synthesized_best_prompt。
 
 评分维度：
 1. clarity：任务表达是否清楚，是否减少歧义。
@@ -44,6 +45,8 @@ export const DEFAULT_JUDGE_SYSTEM_PROMPT = `你是一名严谨的 Prompt Review 
 - 点评要指出“为什么高分”和“为什么没拿第一”。
 - 总分使用 0-100 整数。
 - 所有候选都必须进入 ranking 数组，并按 total_score 从高到低排序。
+- synthesized_best_prompt 必须是一版可以直接复制使用的最终提示词，而不是分析说明。
+- synthesis_rationale 需要解释你综合吸收了哪些优点。
 
 严格按以下 JSON 输出，不要加 Markdown 代码块：
 {
@@ -64,7 +67,10 @@ export const DEFAULT_JUDGE_SYSTEM_PROMPT = `你是一名严谨的 Prompt Review 
       }
     }
   ],
-  "overall_summary": "对本轮候选整体质量的总结"
+  "overall_summary": "对本轮候选整体质量的总结",
+  "synthesized_best_prompt": "融合四份候选优势后的最终提示词",
+  "synthesis_rationale": "为什么这样融合",
+  "applied_advantages": ["吸收点1", "吸收点2", "吸收点3"]
 }`;
 
 export function buildOptimizerUserPrompt(originalPrompt: string) {
@@ -154,5 +160,8 @@ export function normalizeJudgePayload(payload: JudgePromptPayload) {
   return {
     ranking: payload.ranking ?? [],
     overallSummary: payload.overall_summary ?? '',
+    synthesizedBestPrompt: payload.synthesized_best_prompt ?? '',
+    synthesisRationale: payload.synthesis_rationale ?? '',
+    appliedAdvantages: payload.applied_advantages ?? [],
   };
 }

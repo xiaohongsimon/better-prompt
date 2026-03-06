@@ -38,14 +38,14 @@ export function PromptInput({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[var(--accent-strong)]">
-            Prompt Director
+            Input
           </p>
-          <h2 className="mt-3 text-3xl font-semibold leading-tight text-[var(--ink-strong)]">
-            输入原始需求，等待四个模型同时开工
+          <h2 className="mt-3 text-2xl font-semibold leading-tight text-[var(--ink-strong)]">
+            输入原始提示词
           </h2>
         </div>
         <div className="rounded-full border border-[rgba(18,28,45,0.08)] bg-[rgba(255,255,255,0.7)] px-4 py-2 text-sm text-[var(--ink-soft)]">
-          竞速返回，先到先看
+          先返先看
         </div>
       </div>
 
@@ -54,7 +54,7 @@ export function PromptInput({
           placeholder="例如：我要让 AI 帮我写一份面向投资人的 SaaS 产品介绍，但我要它逻辑清楚、术语专业、结构完整，并能控制输出格式。"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
-          className="min-h-[220px] rounded-[24px] border-0 bg-transparent px-4 py-4 text-[17px] leading-8 shadow-none focus-visible:ring-0"
+          className="min-h-[168px] rounded-[24px] border-0 bg-transparent px-4 py-4 text-[17px] leading-8 shadow-none focus-visible:ring-0"
           disabled={isLoading}
         />
       </div>
@@ -76,7 +76,7 @@ export function PromptInput({
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div className="max-w-2xl space-y-2">
           <p className="text-sm leading-6 text-[var(--ink-soft)]">
-            默认流程是四个模型并发优化，结果先返先显示。全部返回后才启动裁判，所以用户不会再被整段等待卡住。
+            四个模型并发优化，全部返回后由 Kimi 进行排序与综合改写。
           </p>
         </div>
         <Button
