@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { ArrowUpRight, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -14,9 +14,9 @@ interface PromptInputProps {
 }
 
 const EXAMPLES = [
-  '帮我写一条提示词，让 AI 以资深产品经理身份输出 PRD。',
-  '把这段招聘 JD 优化成更专业的人才画像分析任务。',
-  '我要做短视频脚本，请帮我把需求改造成高质量提示词。',
+  '让 AI 以资深产品经理身份输出一份结构完整、专业可执行的 PRD。',
+  '把这段招聘需求改造成适合 GPT 执行的人才画像分析提示词。',
+  '把短视频创意需求重写成能稳定产出分镜脚本的提示词。',
 ];
 
 export function PromptInput({
@@ -34,55 +34,67 @@ export function PromptInput({
   };
 
   return (
-    <section className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent-strong)]">
-            Prompt Workbench
+    <section className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[var(--accent-strong)]">
+            Prompt Director
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-balance text-[var(--ink-strong)]">
-            输入原始提示词，生成 4 份候选并由裁判模型排序
+          <h2 className="mt-3 text-3xl font-semibold leading-tight text-[var(--ink-strong)]">
+            输入原始需求，等待四个模型同时开工
           </h2>
         </div>
-        <div className="hidden rounded-full border border-white/50 bg-white/70 px-4 py-2 text-sm text-[var(--ink-soft)] shadow-sm md:block">
-          默认并行：Qwen / GLM / Kimi / MiniMax
+        <div className="rounded-full border border-[rgba(18,28,45,0.08)] bg-[rgba(255,255,255,0.7)] px-4 py-2 text-sm text-[var(--ink-soft)]">
+          竞速返回，先到先看
         </div>
       </div>
 
-      <Textarea
-        placeholder="例如：我想让 AI 帮我写一份面向投资人的 SaaS 产品介绍，但我要它逻辑清楚、术语专业、结构完整。"
-        value={prompt}
-        onChange={(event) => setPrompt(event.target.value)}
-        className="min-h-[220px] rounded-[28px] border-white/60 bg-white/75 px-6 py-5 text-base leading-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur"
-        disabled={isLoading}
-      />
+      <div className="rounded-[32px] border border-[rgba(255,255,255,0.7)] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(248,243,235,0.78))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+        <Textarea
+          placeholder="例如：我要让 AI 帮我写一份面向投资人的 SaaS 产品介绍，但我要它逻辑清楚、术语专业、结构完整，并能控制输出格式。"
+          value={prompt}
+          onChange={(event) => setPrompt(event.target.value)}
+          className="min-h-[220px] rounded-[24px] border-0 bg-transparent px-4 py-4 text-[17px] leading-8 shadow-none focus-visible:ring-0"
+          disabled={isLoading}
+        />
+      </div>
 
       <div className="flex flex-wrap gap-2">
         {EXAMPLES.map((example) => (
           <button
             key={example}
             type="button"
-            className="rounded-full border border-[var(--line)] bg-white/70 px-3 py-1.5 text-sm text-[var(--ink-soft)] transition hover:border-[var(--accent)] hover:text-[var(--ink-strong)]"
             onClick={() => setPrompt(example)}
             disabled={isLoading}
+            className="rounded-full border border-[rgba(18,28,45,0.08)] bg-white/72 px-3 py-1.5 text-sm text-[var(--ink-soft)] transition hover:border-[var(--accent)] hover:text-[var(--ink-strong)]"
           >
             {example}
           </button>
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <p className="max-w-2xl text-sm leading-6 text-[var(--ink-soft)]">
-          系统会先并行请求 4 个百炼模型输出结构化优化结果，再用单独裁判模型给出维度评分、排序结论和改进建议。
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl space-y-2">
+          <p className="text-sm leading-6 text-[var(--ink-soft)]">
+            默认流程是四个模型并发优化，结果先返先显示。全部返回后才启动裁判，所以用户不会再被整段等待卡住。
+          </p>
+        </div>
         <Button
           onClick={handleSubmit}
           disabled={!prompt.trim() || isLoading || submitDisabled}
-          size="lg"
-          className="h-12 rounded-full bg-[var(--accent)] px-6 text-[15px] font-semibold text-[var(--accent-foreground)] hover:bg-[var(--accent-strong)]"
+          className="h-14 rounded-full bg-[var(--ink-strong)] px-6 text-[15px] font-semibold text-white hover:bg-[var(--accent-strong)]"
         >
-          <Sparkles className="mr-2 size-4" />
-          {isLoading ? '正在并行优化...' : '开始优化'}
+          {isLoading ? (
+            <>
+              <Sparkles className="mr-2 size-4" />
+              正在竞速生成
+            </>
+          ) : (
+            <>
+              <ArrowUpRight className="mr-2 size-4" />
+              开始优化
+            </>
+          )}
         </Button>
       </div>
 
