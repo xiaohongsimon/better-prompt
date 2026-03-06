@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "BetterPrompt - 多模型提示词优化工具",
-  description: "输入你的提示词，让多个 AI 模型为你优化，并由 GLM-5 评分排序",
+  title: 'BetterPrompt Studio',
+  description:
+    '并行调用 Qwen、GLM、Kimi、MiniMax 优化提示词，再由裁判模型打分排序并输出专业点评。',
 };
 
 export default function RootLayout({
@@ -13,9 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className="antialiased font-sans">
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }

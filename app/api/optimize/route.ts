@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import { OPTIMIZER_SYSTEM_PROMPT, OPTIMIZER_USER_PROMPT } from '@/lib/prompts/optimizer';
-import { AVAILABLE_MODELS } from '@/types';
-import type { OptimizedResult, ApiConfig } from '@/types';
+import {
+  buildOptimizerUserPrompt,
+  DEFAULT_OPTIMIZER_SYSTEM_PROMPT,
+  extractJsonObject,
+} from '@/lib/prompts/optimizer';
+import { assertConfig, createClient, getEffectiveConfig, getModelMeta } from '@/lib/server/bailian';
+import type { ApiConfig, OptimizedResult, OptimizerPromptPayload } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,45 +15,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    if (!config || !config.baseUrl || !config.apiKey || !config.optimizerModels?.length) {
-      return NextResponse.json({ error: 'API configuration is required' }, { status: 400 });
-    }
+    const effectiveConfig = getEffectiveConfig(config as Partial<ApiConfig>);
+    effectiveConfig.optimizerSystemPrompt ||= DEFAULT_OPTIMIZER_SYSTEM_PROMPT;
+    assertConfig(effectiveConfig, 'optimizer');
 
-    const apiConfig = config as ApiConfig;
-    const openai = new OpenAI({
-      baseURL: apiConfig.baseUrl,
-      apiKey: apiConfig.apiKey,
-    });
+    const client = createClient(effectiveConfig);
+    const userPrompt = buildOptimizerUserPrompt(prompt);
 
-    // Run all optimizations in parallel
     const results = await Promise.all(
-      apiConfig.optimizerModels.map(async (modelId) => {
+      effectiveConfig.optimizerModels.map(async (modelId) => {
+        const meta = getModelMeta(modelId);
+
         try {
-          const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
-          const response = await openai.chat.completions.create({
+          const response = await client.chat.completions.create({
             model: modelId,
-            max_tokens: 2000,
+            temperature: effectiveConfig.optimizerTemperature,
+            max_tokens: effectiveConfig.optimizerMaxTokens,
             messages: [
-              { role: 'system', content: OPTIMIZER_SYSTEM_PROMPT },
-              { role: 'user', content: OPTIMIZER_USER_PROMPT(prompt) },
+              { role: 'system', content: effectiveConfig.optimizerSystemPrompt },
+              { role: 'user', content: userPrompt },
             ],
           });
 
-          const optimizedPrompt = response.choices[0]?.message?.content || '';
+          const content = response.choices[0]?.message?.content || '';
+          const parsed = extractJsonObject(content) as OptimizerPromptPayload;
 
           return {
             model: modelId,
-            modelName: modelInfo?.name || modelId,
-            optimizedPrompt,
-          } as OptimizedResult;
+            modelName: meta.modelName,
+            provider: meta.provider,
+            optimizedPrompt: parsed.optimized_prompt?.trim() || '',
+            strategySummary: parsed.strategy_summary?.trim() || '',
+            keyUpgrades: parsed.key_upgrades?.slice(0, 5) || [],
+            applicableScenarios: parsed.applicable_scenarios?.slice(0, 4) || [],
+            rawText: content,
+          } satisfies OptimizedResult;
         } catch (error) {
-          const modelInfo = AVAILABLE_MODELS.find(m => m.id === modelId);
           return {
             model: modelId,
-            modelName: modelInfo?.name || modelId,
+            modelName: meta.modelName,
+            provider: meta.provider,
             optimizedPrompt: '',
-            error: error instanceof Error ? error.message : 'Failed',
-          } as OptimizedResult;
+            strategySummary: '',
+            keyUpgrades: [],
+            applicableScenarios: [],
+            error: error instanceof Error ? error.message : 'Failed to optimize prompt',
+          } satisfies OptimizedResult;
         }
       })
     );
@@ -58,8 +68,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ results });
   } catch (error) {
     console.error('Optimize API error:', error);
+
     return NextResponse.json(
-      { error: 'Failed to optimize prompt' },
+      {
+        error: error instanceof Error ? error.message : 'Failed to optimize prompt',
+      },
       { status: 500 }
     );
   }

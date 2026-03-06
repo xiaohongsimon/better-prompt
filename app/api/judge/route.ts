@@ -1,75 +1,86 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
-import { JUDGE_SYSTEM_PROMPT, JUDGE_USER_PROMPT } from '@/lib/prompts/optimizer';
-import { AVAILABLE_MODELS } from '@/types';
-import type { JudgeResult, ApiConfig } from '@/types';
+import {
+  buildJudgeUserPrompt,
+  DEFAULT_JUDGE_SYSTEM_PROMPT,
+  extractJsonObject,
+  normalizeJudgePayload,
+} from '@/lib/prompts/optimizer';
+import { assertConfig, createClient, getEffectiveConfig, getModelMeta } from '@/lib/server/bailian';
+import type { ApiConfig, JudgePromptPayload, JudgeResult, OptimizedResult } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
     const { originalPrompt, candidates, config } = await request.json();
 
-    if (!originalPrompt || !candidates || !Array.isArray(candidates)) {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
+    if (!originalPrompt || typeof originalPrompt !== 'string') {
+      return NextResponse.json({ error: 'Original prompt is required' }, { status: 400 });
     }
 
-    if (!config || !config.baseUrl || !config.apiKey || !config.judgeModel) {
-      return NextResponse.json({ error: 'API configuration is required' }, { status: 400 });
+    if (!Array.isArray(candidates)) {
+      return NextResponse.json({ error: 'Candidates are required' }, { status: 400 });
     }
 
-    // Filter out failed candidates
-    const validCandidates = candidates.filter(
-      (c: { optimizedPrompt: string; error?: string }) => c.optimizedPrompt && !c.error
+    const validCandidates = (candidates as OptimizedResult[]).filter(
+      (candidate) => candidate.optimizedPrompt && !candidate.error
     );
 
     if (validCandidates.length === 0) {
       return NextResponse.json({ error: 'No valid candidates to judge' }, { status: 400 });
     }
 
-    const apiConfig = config as ApiConfig;
-    const openai = new OpenAI({
-      baseURL: apiConfig.baseUrl,
-      apiKey: apiConfig.apiKey,
-    });
+    const effectiveConfig = getEffectiveConfig(config as Partial<ApiConfig>);
+    effectiveConfig.judgeSystemPrompt ||= DEFAULT_JUDGE_SYSTEM_PROMPT;
+    assertConfig(effectiveConfig, 'judge');
 
-    const modelInfo = AVAILABLE_MODELS.find(m => m.id === apiConfig.judgeModel);
-
-    const response = await openai.chat.completions.create({
-      model: apiConfig.judgeModel,
-      max_tokens: 2000,
+    const client = createClient(effectiveConfig);
+    const response = await client.chat.completions.create({
+      model: effectiveConfig.judgeModel,
+      temperature: effectiveConfig.judgeTemperature,
+      max_tokens: effectiveConfig.judgeMaxTokens,
       messages: [
-        { role: 'system', content: JUDGE_SYSTEM_PROMPT },
-        { role: 'user', content: JUDGE_USER_PROMPT(originalPrompt, validCandidates) },
+        { role: 'system', content: effectiveConfig.judgeSystemPrompt },
+        { role: 'user', content: buildJudgeUserPrompt(originalPrompt, validCandidates) },
       ],
     });
 
     const content = response.choices[0]?.message?.content || '';
+    const parsed = extractJsonObject(content) as JudgePromptPayload;
+    const normalized = normalizeJudgePayload(parsed);
 
-    // Parse JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Failed to parse judge response');
-    }
+    const rankings: JudgeResult[] = normalized.ranking.map((entry, index) => {
+      const meta = getModelMeta(entry.model);
 
-    const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        model: entry.model,
+        modelName: meta.modelName,
+        provider: meta.provider,
+        score: entry.total_score,
+        rank: index + 1,
+        verdict: entry.verdict,
+        strengths: entry.strengths?.slice(0, 4) || [],
+        weaknesses: entry.weaknesses?.slice(0, 4) || [],
+        improvementFocus: entry.improvement_focus?.slice(0, 4) || [],
+        dimensionScores: {
+          clarity: entry.dimension_scores?.clarity ?? 0,
+          completeness: entry.dimension_scores?.completeness ?? 0,
+          controllability: entry.dimension_scores?.controllability ?? 0,
+          professionality: entry.dimension_scores?.professionality ?? 0,
+          executionLikelihood: entry.dimension_scores?.execution_likelihood ?? 0,
+        },
+      };
+    });
 
-    const rankings: JudgeResult[] = parsed.rankings.map(
-      (r: { model: string; score: number; reason: string }, index: number) => {
-        const candidateModel = AVAILABLE_MODELS.find(m => m.id === r.model || m.name === r.model);
-        return {
-          model: r.model,
-          modelName: candidateModel?.name || r.model,
-          score: r.score,
-          reason: r.reason,
-          rank: index + 1,
-        };
-      }
-    );
-
-    return NextResponse.json({ rankings });
+    return NextResponse.json({
+      rankings,
+      judgeSummary: normalized.overallSummary,
+    });
   } catch (error) {
     console.error('Judge API error:', error);
+
     return NextResponse.json(
-      { error: 'Failed to judge prompts' },
+      {
+        error: error instanceof Error ? error.message : 'Failed to judge prompts',
+      },
       { status: 500 }
     );
   }

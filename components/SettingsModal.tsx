@@ -1,10 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AVAILABLE_MODELS } from '@/types';
-import type { ApiConfig } from '@/types';
+import {
+  AVAILABLE_MODELS,
+  BAILIAN_BASE_URL,
+  DEFAULT_JUDGE_MODEL,
+  DEFAULT_OPTIMIZER_MODEL_IDS,
+  type ApiConfig,
+} from '@/types';
+import {
+  DEFAULT_JUDGE_SYSTEM_PROMPT,
+  DEFAULT_OPTIMIZER_SYSTEM_PROMPT,
+} from '@/lib/prompts/optimizer';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -13,7 +24,12 @@ interface SettingsModalProps {
   initialConfig: ApiConfig;
 }
 
-export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: SettingsModalProps) {
+export function SettingsModal({
+  isOpen,
+  onClose,
+  onSave,
+  initialConfig,
+}: SettingsModalProps) {
   const [config, setConfig] = useState<ApiConfig>(initialConfig);
 
   useEffect(() => {
@@ -23,10 +39,26 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
   if (!isOpen) return null;
 
   const handleToggleModel = (modelId: string) => {
-    const newModels = config.optimizerModels.includes(modelId)
-      ? config.optimizerModels.filter(id => id !== modelId)
+    const optimizerModels = config.optimizerModels.includes(modelId)
+      ? config.optimizerModels.filter((id) => id !== modelId)
       : [...config.optimizerModels, modelId];
-    setConfig({ ...config, optimizerModels: newModels });
+
+    setConfig({ ...config, optimizerModels });
+  };
+
+  const applyBailianPreset = () => {
+    setConfig({
+      ...config,
+      baseUrl: BAILIAN_BASE_URL,
+      optimizerModels: DEFAULT_OPTIMIZER_MODEL_IDS,
+      judgeModel: DEFAULT_JUDGE_MODEL,
+      optimizerTemperature: 0.7,
+      optimizerMaxTokens: 2200,
+      judgeTemperature: 0.2,
+      judgeMaxTokens: 2400,
+      optimizerSystemPrompt: DEFAULT_OPTIMIZER_SYSTEM_PROMPT,
+      judgeSystemPrompt: DEFAULT_JUDGE_SYSTEM_PROMPT,
+    });
   };
 
   const handleSave = () => {
@@ -34,111 +66,242 @@ export function SettingsModal({ isOpen, onClose, onSave, initialConfig }: Settin
     onClose();
   };
 
+  const canSave = config.optimizerModels.length > 0 && Boolean(config.judgeModel);
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>API 配置</span>
-            <button
-              onClick={onClose}
-              className="text-muted-foreground hover:text-foreground text-xl"
-            >
-              ×
-            </button>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* API 配置 */}
-          <div className="space-y-3">
-            <h3 className="font-medium text-sm text-muted-foreground">基础配置</h3>
-            <div>
-              <label className="block text-sm font-medium mb-1">API Base URL</label>
-              <input
-                type="text"
-                placeholder="https://coding.dashscope.aliyuncs.com/v1"
-                value={config.baseUrl}
-                onChange={(e) => setConfig({ ...config, baseUrl: e.target.value })}
-                className="w-full px-3 py-2 border rounded-md text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">API Key</label>
-              <input
-                type="password"
-                placeholder="sk-..."
-                value={config.apiKey}
-                onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                className="w-full px-3 py-2 border rounded-md text-sm"
-              />
-            </div>
-          </div>
-
-          {/* 优化模型选择 */}
-          <div className="space-y-3">
-            <h3 className="font-medium text-sm text-muted-foreground">优化模型（选择多个）</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {AVAILABLE_MODELS.map((model) => (
-                <label
-                  key={model.id}
-                  className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition-colors ${
-                    config.optimizerModels.includes(model.id)
-                      ? 'bg-primary/10 border-primary'
-                      : 'hover:bg-muted'
-                  }`}
+    <div className="fixed inset-0 z-50 bg-[rgba(15,23,42,0.45)] p-4 backdrop-blur-sm">
+      <div className="mx-auto flex min-h-full max-w-5xl items-center justify-center">
+        <Card className="max-h-[92vh] w-full overflow-y-auto rounded-[32px] border-white/70 bg-[rgba(250,247,242,0.95)] shadow-[0_40px_120px_rgba(28,37,56,0.28)]">
+          <CardHeader className="border-b border-black/5 pb-5">
+            <CardTitle className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent-strong)]">
+                  Settings
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">
+                  百炼 Coding Plan 配置
+                </h2>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={applyBailianPreset}
+                  className="rounded-full border-[var(--line)] bg-white/80"
                 >
-                  <input
-                    type="checkbox"
-                    checked={config.optimizerModels.includes(model.id)}
-                    onChange={() => handleToggleModel(model.id)}
-                    className="rounded"
-                  />
-                  <span className="text-sm">{model.name}</span>
-                </label>
-              ))}
+                  <RotateCcw className="mr-2 size-4" />
+                  套用百炼预设
+                </Button>
+                <button
+                  onClick={onClose}
+                  className="rounded-full border border-[var(--line)] bg-white/80 px-3 py-1.5 text-sm text-[var(--ink-soft)]"
+                >
+                  关闭
+                </button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-8 p-6">
+            <section className="grid gap-6 md:grid-cols-2">
+              <Field label="Base URL" hint="百炼 OpenAI 兼容接口地址">
+                <input
+                  type="text"
+                  value={config.baseUrl}
+                  placeholder={BAILIAN_BASE_URL}
+                  onChange={(event) => setConfig({ ...config, baseUrl: event.target.value })}
+                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                />
+              </Field>
+
+              <Field label="API Key" hint="支持浏览器本地存储，也支持 Vercel 环境变量兜底">
+                <input
+                  type="password"
+                  value={config.apiKey}
+                  placeholder="sk-..."
+                  onChange={(event) => setConfig({ ...config, apiKey: event.target.value })}
+                  className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                />
+              </Field>
+            </section>
+
+            <section className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-[28px] border border-[var(--line)] bg-white/80 p-5">
+                <p className="text-sm font-semibold text-[var(--ink-strong)]">优化模型</p>
+                <p className="mt-1 text-sm text-[var(--ink-soft)]">
+                  默认就是你提到的四个模型，支持自由增删。
+                </p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {AVAILABLE_MODELS.map((model) => (
+                    <label
+                      key={model.id}
+                      className={`rounded-2xl border px-4 py-3 transition ${
+                        config.optimizerModels.includes(model.id)
+                          ? 'border-[var(--accent)] bg-[rgba(202,97,44,0.08)]'
+                          : 'border-[var(--line)] bg-white'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          checked={config.optimizerModels.includes(model.id)}
+                          onChange={() => handleToggleModel(model.id)}
+                          className="mt-1"
+                        />
+                        <div>
+                          <div className="font-medium text-[var(--ink-strong)]">{model.name}</div>
+                          <div className="text-xs text-[var(--ink-soft)]">
+                            {model.provider} · {model.id}
+                          </div>
+                        </div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-6 rounded-[28px] border border-[var(--line)] bg-white/80 p-5">
+                <Field label="裁判模型" hint="建议单独使用一个模型做评分">
+                  <select
+                    value={config.judgeModel}
+                    onChange={(event) => setConfig({ ...config, judgeModel: event.target.value })}
+                    className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                  >
+                    <option value="">请选择模型</option>
+                    {AVAILABLE_MODELS.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name} · {model.id}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+
+                <div className="grid gap-4">
+                  <Field label="优化 Temperature" hint="建议 0.6 - 0.8">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      value={config.optimizerTemperature}
+                      onChange={(event) =>
+                        setConfig({ ...config, optimizerTemperature: Number(event.target.value) })
+                      }
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                    />
+                  </Field>
+                  <Field label="优化 Max Tokens" hint="确保优化后提示词和结构化结果能完整输出">
+                    <input
+                      type="number"
+                      min="512"
+                      value={config.optimizerMaxTokens}
+                      onChange={(event) =>
+                        setConfig({ ...config, optimizerMaxTokens: Number(event.target.value) })
+                      }
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                    />
+                  </Field>
+                  <Field label="裁判 Temperature" hint="建议较低，减少排序波动">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      value={config.judgeTemperature}
+                      onChange={(event) =>
+                        setConfig({ ...config, judgeTemperature: Number(event.target.value) })
+                      }
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                    />
+                  </Field>
+                  <Field label="裁判 Max Tokens" hint="用于输出完整点评和维度分数">
+                    <input
+                      type="number"
+                      min="512"
+                      value={config.judgeMaxTokens}
+                      onChange={(event) =>
+                        setConfig({ ...config, judgeMaxTokens: Number(event.target.value) })
+                      }
+                      className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-sm"
+                    />
+                  </Field>
+                </div>
+              </div>
+            </section>
+
+            <section className="grid gap-6">
+              <Field label="优化模型系统提示词" hint="发给四个优化模型的统一系统提示词">
+                <textarea
+                  value={config.optimizerSystemPrompt}
+                  onChange={(event) =>
+                    setConfig({ ...config, optimizerSystemPrompt: event.target.value })
+                  }
+                  className="min-h-[220px] w-full rounded-[24px] border border-[var(--line)] bg-white px-4 py-4 text-sm leading-6"
+                />
+              </Field>
+
+              <Field label="裁判系统提示词" hint="发给评审模型的系统提示词">
+                <textarea
+                  value={config.judgeSystemPrompt}
+                  onChange={(event) =>
+                    setConfig({ ...config, judgeSystemPrompt: event.target.value })
+                  }
+                  className="min-h-[260px] w-full rounded-[24px] border border-[var(--line)] bg-white px-4 py-4 text-sm leading-6"
+                />
+              </Field>
+            </section>
+
+            <div className="rounded-[24px] border border-[var(--line)] bg-[var(--panel-soft)] p-4 text-sm leading-6 text-[var(--ink-soft)]">
+              <span>说明：为了适配 Vercel，服务端也支持环境变量。若设置面板未填写，会自动回退到 </span>
+              <code>BAILIAN_BASE_URL</code>
+              <span>、</span>
+              <code>BAILIAN_API_KEY</code>
+              <span>、</span>
+              <code>OPTIMIZER_*</code>
+              <span>、</span>
+              <code>JUDGE_*</code>
+              <span>。</span>
             </div>
-          </div>
 
-          {/* 裁判模型选择 */}
-          <div className="space-y-3">
-            <h3 className="font-medium text-sm text-muted-foreground">评分模型（选择一个）</h3>
-            <select
-              value={config.judgeModel}
-              onChange={(e) => setConfig({ ...config, judgeModel: e.target.value })}
-              className="w-full px-3 py-2 border rounded-md text-sm"
-            >
-              <option value="">请选择...</option>
-              {AVAILABLE_MODELS.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
-            <p>💡 配置说明：</p>
-            <ul className="list-disc list-inside mt-1 space-y-1">
-              <li>Base URL 和 API Key 仅存储在本地浏览器</li>
-              <li>优化模型可选择多个并行优化</li>
-              <li>评分模型用于对优化结果排序</li>
-            </ul>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button variant="outline" onClick={onClose} className="flex-1">
-              取消
-            </Button>
-            <Button
-              onClick={handleSave}
-              className="flex-1"
-              disabled={!config.baseUrl || !config.apiKey || config.optimizerModels.length === 0 || !config.judgeModel}
-            >
-              保存
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={onClose}
+                className="flex-1 rounded-full border-[var(--line)] bg-white/80"
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={!canSave}
+                className="flex-1 rounded-full bg-[var(--accent)] text-[var(--accent-foreground)] hover:bg-[var(--accent-strong)]"
+              >
+                保存配置
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
+  );
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block space-y-2">
+      <div>
+        <div className="text-sm font-semibold text-[var(--ink-strong)]">{label}</div>
+        <div className="text-xs text-[var(--ink-soft)]">{hint}</div>
+      </div>
+      {children}
+    </label>
   );
 }

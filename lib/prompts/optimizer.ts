@@ -1,56 +1,128 @@
-export const OPTIMIZER_SYSTEM_PROMPT = `你是一位专业的提示词优化专家。你的任务是优化用户提供的提示词，使其更加清晰、具体、结构化。
+import type { JudgePromptPayload, OptimizedResult } from '@/types';
 
-优化原则：
-1. **清晰性**: 确保提示词意图明确，避免歧义
-2. **具体性**: 添加必要的细节和约束条件
-3. **结构化**: 使用清晰的格式和层次结构
-4. **角色设定**: 如果适用，为 AI 设定明确的角色
-5. **输出格式**: 明确期望的输出格式和风格
+export const DEFAULT_OPTIMIZER_SYSTEM_PROMPT = `你是一名资深 Prompt Engineer，负责把用户的原始提示词重写成更适合大模型执行的专业版本。
 
-请直接输出优化后的提示词，不需要解释优化过程。`;
+你的目标不是简单润色，而是系统提升提示词的执行质量。你必须兼顾以下维度：
+1. 任务定义是否清晰，避免歧义。
+2. 上下文是否充分，补足必要背景与边界。
+3. 约束是否可执行，避免空泛表述。
+4. 输出格式是否明确，便于模型稳定产出。
+5. 专业程度是否足够，体现任务拆解、质量标准、失败兜底。
 
-export const OPTIMIZER_USER_PROMPT = (originalPrompt: string) => `请优化以下提示词：
+工作要求：
+- 保留用户真实意图，不要擅自改题。
+- 如果原提示词过短，要补足合理结构，但不要编造具体事实。
+- 输出必须适用于通用大模型，避免依赖特定平台私有语法。
+- 优先让提示词更“可执行、可控制、可复用”。
+- 不要解释你的思考过程，不要输出多余寒暄。
 
----
-${originalPrompt}
----
-
-输出优化后的提示词：`;
-
-export const JUDGE_SYSTEM_PROMPT = `你是一位公正的提示词质量评审专家。你的任务是对多个优化后的提示词进行评分和排序。
-
-评分标准（满分100分）：
-1. **清晰度** (25分): 提示词是否表达清晰，无歧义
-2. **完整性** (25分): 是否包含必要的上下文和约束
-3. **结构化** (25分): 是否组织有序，逻辑清晰
-4. **实用性** (25分): 是否能引导出高质量的响应
-
-输出格式要求（JSON）：
+严格按以下 JSON 输出，不要加 Markdown 代码块：
 {
-  "rankings": [
+  "optimized_prompt": "优化后的完整提示词",
+  "strategy_summary": "一句话概括本次优化策略",
+  "key_upgrades": ["升级点1", "升级点2", "升级点3"],
+  "applicable_scenarios": ["适用场景1", "适用场景2"]
+}`;
+
+export const DEFAULT_JUDGE_SYSTEM_PROMPT = `你是一名严谨的 Prompt Review Judge，负责对多份“优化后的提示词”进行专业评分、排序，并给出精准点评。
+
+评分目标：
+- 找出哪份提示词最清晰、最专业、最可执行、最利于获得高质量输出。
+- 点评必须具体，不能只写空泛赞美或套话。
+- 排名应体现相对差异，避免所有候选分数过于接近。
+
+评分维度：
+1. clarity：任务表达是否清楚，是否减少歧义。
+2. completeness：上下文、约束、输入输出要求是否完整。
+3. controllability：是否便于控制风格、结构、步骤、边界条件。
+4. professionality：是否体现专业提示词设计能力。
+5. execution_likelihood：是否更可能稳定产出高质量结果。
+
+裁判要求：
+- 必须先理解原始提示词意图，再评估候选版本是否忠实且升级充分。
+- 不能偏袒任何模型品牌，只按文本质量评判。
+- 点评要指出“为什么高分”和“为什么没拿第一”。
+- 总分使用 0-100 整数。
+- 所有候选都必须进入 ranking 数组，并按 total_score 从高到低排序。
+
+严格按以下 JSON 输出，不要加 Markdown 代码块：
+{
+  "ranking": [
     {
-      "model": "模型名称",
-      "score": 分数(0-100),
-      "reason": "评分理由(简短)"
+      "model": "模型ID",
+      "total_score": 92,
+      "verdict": "一句话结论",
+      "strengths": ["优点1", "优点2"],
+      "weaknesses": ["不足1", "不足2"],
+      "improvement_focus": ["改进建议1", "改进建议2"],
+      "dimension_scores": {
+        "clarity": 19,
+        "completeness": 18,
+        "controllability": 19,
+        "professionality": 18,
+        "execution_likelihood": 18
+      }
     }
-  ]
+  ],
+  "overall_summary": "对本轮候选整体质量的总结"
+}`;
+
+export function buildOptimizerUserPrompt(originalPrompt: string) {
+  return `请优化下面这条原始提示词。
+
+原始提示词：
+"""
+${originalPrompt}
+"""
+
+请在不改变核心任务目标的前提下，将其改写为更专业、更稳定、更易出好结果的版本，并按要求输出 JSON。`;
 }
 
-请按分数从高到低排序。`;
+export function buildJudgeUserPrompt(
+  originalPrompt: string,
+  candidates: OptimizedResult[]
+) {
+  const candidateText = candidates
+    .map((candidate, index) => {
+      return [
+        `候选 ${index + 1}`,
+        `model: ${candidate.model}`,
+        `provider: ${candidate.provider}`,
+        `strategy_summary: ${candidate.strategySummary}`,
+        `optimized_prompt:`,
+        candidate.optimizedPrompt,
+      ].join('\n');
+    })
+    .join('\n\n');
 
-export const JUDGE_USER_PROMPT = (originalPrompt: string, candidates: Array<{model: string; optimizedPrompt: string}>) => {
-  const candidatesText = candidates.map((c, i) => `
-【候选 ${i + 1}】模型: ${c.model}
-${c.optimizedPrompt}
-`).join('\n');
+  return `请评审以下候选优化提示词。
 
-  return `原始提示词：
----
+原始提示词：
+"""
 ${originalPrompt}
----
+"""
 
-优化后的候选提示词：
-${candidatesText}
+候选列表：
+${candidateText}
 
-请对以上候选进行评分排序，输出 JSON 格式结果。`;
-};
+请严格输出 JSON，并完成评分排序。`;
+}
+
+export function extractJsonObject(text: string) {
+  const fenced = text.match(/```json\s*([\s\S]*?)```/i);
+  const candidate = fenced?.[1] ?? text;
+  const match = candidate.match(/\{[\s\S]*\}/);
+
+  if (!match) {
+    throw new Error('Model response did not contain a JSON object');
+  }
+
+  return JSON.parse(match[0]);
+}
+
+export function normalizeJudgePayload(payload: JudgePromptPayload) {
+  return {
+    ranking: payload.ranking ?? [],
+    overallSummary: payload.overall_summary ?? '',
+  };
+}
