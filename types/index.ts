@@ -98,7 +98,7 @@ export interface ApiConfig {
   judgeSystemPrompt: string;
 }
 
-export const BAILIAN_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+export const BAILIAN_BASE_URL = 'https://coding.dashscope.aliyuncs.com/v1';
 
 export const DEFAULT_OPTIMIZER_MODEL_IDS: string[] = [
   'qwen3.5-plus',

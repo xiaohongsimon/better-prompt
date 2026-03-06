@@ -37,7 +37,7 @@
 
 应用默认使用百炼 OpenAI 兼容接口：
 
-- `https://dashscope.aliyuncs.com/compatible-mode/v1`
+- `https://coding.dashscope.aliyuncs.com/v1`
 
 支持两种配置方式：
 
@@ -47,7 +47,7 @@
 推荐在 Vercel 中配置以下环境变量：
 
 ```bash
-BAILIAN_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
+BAILIAN_BASE_URL=https://coding.dashscope.aliyuncs.com/v1
 BAILIAN_API_KEY=sk-xxxx
 APP_SIGNING_SECRET=replace-with-a-long-random-secret
 RATE_LIMIT_MAX=8
