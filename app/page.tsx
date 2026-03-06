@@ -13,8 +13,8 @@ const STORAGE_KEY = 'betterprompt_config';
 const DEFAULT_CONFIG: ApiConfig = {
   baseUrl: 'https://coding.dashscope.aliyuncs.com/v1',
   apiKey: '',
-  optimizerModels: ['qwen3.5-plus', 'qwen3-max-2026-01-23', 'glm-5'],
-  judgeModel: 'glm-5',
+  optimizerModels: ['qwen3.5-plus'],
+  judgeModel: 'qwen3.5-plus',
 };
 
 export default function Home() {
