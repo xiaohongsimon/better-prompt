@@ -11,6 +11,8 @@ interface RankingListProps {
 }
 
 export function RankingList({ rankings, results, judgeSummary }: RankingListProps) {
+  const failedResults = results.filter((result) => result.error);
+
   return (
     <motion.section
       initial={{ opacity: 0 }}
@@ -46,6 +48,23 @@ export function RankingList({ rankings, results, judgeSummary }: RankingListProp
           />
         );
       })}
+
+      {failedResults.length > 0 && (
+        <div className="rounded-[30px] border border-[rgba(180,58,38,0.15)] bg-[rgba(255,235,231,0.88)] p-6 shadow-[0_18px_50px_rgba(34,41,57,0.08)]">
+          <h3 className="text-lg font-semibold text-[rgb(132,39,27)]">未进入排名的失败模型</h3>
+          <div className="mt-4 grid gap-3">
+            {failedResults.map((result) => (
+              <div
+                key={result.model}
+                className="rounded-2xl border border-[rgba(180,58,38,0.12)] bg-white/70 px-4 py-3 text-sm leading-6 text-[rgb(132,39,27)]"
+              >
+                <span className="font-medium">{result.modelName}</span>
+                <span>：{result.error}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </motion.section>
   );
 }

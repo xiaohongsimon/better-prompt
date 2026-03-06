@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   buildOptimizerUserPrompt,
   DEFAULT_OPTIMIZER_SYSTEM_PROMPT,
-  extractJsonObject,
+  parseOptimizerResponse,
 } from '@/lib/prompts/optimizer';
 import { assertConfig, createClient, getEffectiveConfig, getModelMeta } from '@/lib/server/bailian';
 import {
@@ -13,7 +13,7 @@ import {
   validatePrompt,
   verifyTurnstileToken,
 } from '@/lib/server/security';
-import type { ApiConfig, OptimizedResult, OptimizerPromptPayload } from '@/types';
+import type { ApiConfig, OptimizedResult } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
           });
 
           const content = response.choices[0]?.message?.content || '';
-          const parsed = extractJsonObject(content) as OptimizerPromptPayload;
+          const parsed = parseOptimizerResponse(content);
 
           return {
             model: modelId,

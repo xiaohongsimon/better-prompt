@@ -96,12 +96,23 @@ export default function Home() {
 
       setResults(optimizeData.results);
 
+      const validCandidates = optimizeData.results.filter(
+        (result) => result.optimizedPrompt && !result.error
+      );
+
+      if (validCandidates.length === 0) {
+        const details = optimizeData.results
+          .map((result) => `${result.modelName}: ${result.error || '未返回可用结果'}`)
+          .join('；');
+        throw new Error(`所有优化模型都未返回可评审候选。${details}`);
+      }
+
       const judgeRes = await fetch('/api/judge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           originalPrompt: prompt,
-          candidates: optimizeData.results,
+          candidates: validCandidates,
           config,
           submissionProof: optimizeData.submissionProof,
         }),

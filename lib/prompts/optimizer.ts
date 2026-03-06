@@ -1,4 +1,4 @@
-import type { JudgePromptPayload, OptimizedResult } from '@/types';
+import type { JudgePromptPayload, OptimizedResult, OptimizerPromptPayload } from '@/types';
 
 export const DEFAULT_OPTIMIZER_SYSTEM_PROMPT = `你是一名资深 Prompt Engineer，负责把用户的原始提示词重写成更适合大模型执行的专业版本。
 
@@ -118,6 +118,36 @@ export function extractJsonObject(text: string) {
   }
 
   return JSON.parse(match[0]);
+}
+
+export function parseOptimizerResponse(text: string): OptimizerPromptPayload {
+  try {
+    const parsed = extractJsonObject(text) as Partial<OptimizerPromptPayload>;
+    const optimizedPrompt = parsed.optimized_prompt?.trim();
+
+    if (optimizedPrompt) {
+      return {
+        optimized_prompt: optimizedPrompt,
+        strategy_summary: parsed.strategy_summary?.trim() || '模型按结构化要求返回了优化结果。',
+        key_upgrades: parsed.key_upgrades?.filter(Boolean).slice(0, 5) || [],
+        applicable_scenarios: parsed.applicable_scenarios?.filter(Boolean).slice(0, 4) || [],
+      };
+    }
+  } catch {
+    // Fall back to raw text parsing below.
+  }
+
+  const fallback = text.trim();
+  if (!fallback) {
+    throw new Error('Model response was empty');
+  }
+
+  return {
+    optimized_prompt: fallback,
+    strategy_summary: '模型未按 JSON 返回，系统已自动回退为纯文本候选。',
+    key_upgrades: ['已保留模型原始优化文本'],
+    applicable_scenarios: ['需要人工复核格式的场景'],
+  };
 }
 
 export function normalizeJudgePayload(payload: JudgePromptPayload) {
