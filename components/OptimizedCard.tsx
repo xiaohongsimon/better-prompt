@@ -12,12 +12,6 @@ interface OptimizedCardProps {
   rank: number;
 }
 
-const modelLabels: Record<string, string> = {
-  claude: 'Claude',
-  gpt4: 'GPT-4',
-  gemini: 'Gemini',
-};
-
 const rankStyles = [
   {
     border: 'border-yellow-400',
@@ -55,7 +49,7 @@ export function OptimizedCard({ result, optimizedPrompt, rank }: OptimizedCardPr
             <Badge className={`${style.badge} text-white font-bold`}>
               #{rank} {style.icon && <span className="ml-1">{style.icon}</span>}
             </Badge>
-            <span className="text-lg font-semibold">{modelLabels[result.model] || result.model}</span>
+            <span className="text-lg font-semibold">{result.modelName || result.model}</span>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-lg font-bold">

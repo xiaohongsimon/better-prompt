@@ -6,16 +6,16 @@ import { PromptInput } from '@/components/PromptInput';
 import { RankingList } from '@/components/RankingList';
 import { LoadingState } from '@/components/LoadingState';
 import { SettingsModal } from '@/components/SettingsModal';
-import type { OptimizedResult, JudgeResult } from '@/types';
+import type { OptimizedResult, JudgeResult, ApiConfig } from '@/types';
 
-interface ApiKeys {
-  anthropic: string;
-  openai: string;
-  google: string;
-  zhipu: string;
-}
+const STORAGE_KEY = 'betterprompt_config';
 
-const STORAGE_KEY = 'betterprompt_api_keys';
+const DEFAULT_CONFIG: ApiConfig = {
+  baseUrl: 'https://coding.dashscope.aliyuncs.com/v1',
+  apiKey: '',
+  optimizerModels: ['qwen3.5-plus', 'qwen3-max-2026-01-23', 'glm-5'],
+  judgeModel: 'glm-5',
+};
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -23,38 +23,38 @@ export default function Home() {
   const [rankings, setRankings] = useState<JudgeResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [apiKeys, setApiKeys] = useState<ApiKeys>({
-    anthropic: '',
-    openai: '',
-    google: '',
-    zhipu: '',
-  });
+  const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
 
-  // Load API keys from localStorage on mount
+  // Load config from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        setApiKeys(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setConfig({ ...DEFAULT_CONFIG, ...parsed });
       } catch (e) {
-        console.error('Failed to parse saved API keys');
+        console.error('Failed to parse saved config');
       }
     }
   }, []);
 
-  const handleSaveKeys = (keys: ApiKeys) => {
-    setApiKeys(keys);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(keys));
+  const handleSaveConfig = (newConfig: ApiConfig) => {
+    setConfig(newConfig);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newConfig));
   };
 
   const handleSubmit = async (prompt: string) => {
-    // Check if at least one key is configured
-    if (!apiKeys.anthropic && !apiKeys.openai && !apiKeys.google) {
-      setError('请先在设置中配置至少一个模型的 API Key');
+    // Check if config is valid
+    if (!config.baseUrl || !config.apiKey) {
+      setError('请先在设置中配置 API Base URL 和 API Key');
       return;
     }
-    if (!apiKeys.zhipu) {
-      setError('请先在设置中配置智谱 AI 的 API Key（用于评分）');
+    if (config.optimizerModels.length === 0) {
+      setError('请先在设置中选择至少一个优化模型');
+      return;
+    }
+    if (!config.judgeModel) {
+      setError('请先在设置中选择评分模型');
       return;
     }
 
@@ -68,7 +68,7 @@ export default function Home() {
       const optimizeRes = await fetch('/api/optimize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, apiKeys }),
+        body: JSON.stringify({ prompt, config }),
       });
 
       if (!optimizeRes.ok) {
@@ -86,7 +86,7 @@ export default function Home() {
         body: JSON.stringify({
           originalPrompt: prompt,
           candidates: optimizeData.results,
-          apiKey: apiKeys.zhipu,
+          config,
         }),
       });
 
@@ -145,7 +145,7 @@ export default function Home() {
             </button>
           </div>
           <p className="text-lg text-muted-foreground">
-            输入你的提示词，让多个 AI 模型为你优化，并由 GLM-5 评分排序
+            输入你的提示词，让多个 AI 模型为你优化，并智能评分排序
           </p>
         </motion.div>
 
@@ -199,7 +199,7 @@ export default function Home() {
           transition={{ delay: 0.5 }}
           className="text-center mt-16 text-sm text-muted-foreground"
         >
-          <p>支持模型：Claude · GPT-4 · Gemini | 裁判：GLM-5</p>
+          <p>支持百炼平台多种模型 · 智能评分排序</p>
         </motion.footer>
       </div>
 
@@ -207,8 +207,8 @@ export default function Home() {
       <SettingsModal
         isOpen={showSettings}
         onClose={() => setShowSettings(false)}
-        onSave={handleSaveKeys}
-        initialKeys={apiKeys}
+        onSave={handleSaveConfig}
+        initialConfig={config}
       />
     </div>
   );
