@@ -35,21 +35,6 @@ export function RankingList({
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-5 xl:grid-cols-2">
-        {results.length > 0 ? results.map((optimized, index) => (
-          <OptimizedCard
-            key={optimized.model}
-            optimized={optimized}
-            result={rankingMap.get(optimized.model)}
-            index={index}
-          />
-        )) : (
-          <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-5 py-8 text-sm leading-7 text-[var(--ink-soft)] xl:col-span-2">
-            正在等待首个模型完成，结果会按返回顺序插入这里。
-          </div>
-        )}
-      </div>
-
       <motion.section
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
@@ -66,15 +51,15 @@ export function RankingList({
               {judgeStatus === 'done'
                 ? '综合最佳版本'
                 : judgeStatus === 'running'
-                  ? '裁判正在综合四个结果'
-                  : '等待四个结果全部返回'}
+                  ? '综合最佳版本正在生成'
+                  : '等待进入综合定稿'}
             </h3>
             <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
               {judgeStatus === 'done'
                 ? judgeSummary
                 : judgeStatus === 'running'
-                  ? '已开始评分与融合。你现在可以先浏览四个候选版本。'
-                  : '裁判带会在四个候选都返回后展示排序、综合稿和解释。'}
+                  ? '四路候选已收齐，Kimi 正在融合最优结构、约束和输出格式。'
+                  : '四个工作窗口完成后，这里会插入实时生成的综合定稿。'}
             </p>
           </div>
 
@@ -106,7 +91,7 @@ export function RankingList({
             </p>
             <div className={`mt-3 overflow-y-auto pr-1 ${expanded ? 'max-h-[48vh]' : 'max-h-[320px]'}`}>
               <p className="whitespace-pre-wrap text-[15px] leading-8 text-[var(--ink-strong)]">
-                {synthesizedBestPrompt || '裁判完成后会在这里输出综合最佳版本。'}
+                {synthesizedBestPrompt || (judgeStatus === 'running' ? '正在整合四个候选的优点并实时生成综合稿…' : '裁判完成后会在这里输出综合最佳版本。')}
               </p>
             </div>
           </div>
@@ -159,8 +144,22 @@ export function RankingList({
             </details>
           </div>
         </div>
-
       </motion.section>
+
+      <div className="grid gap-5 xl:grid-cols-2">
+        {results.length > 0 ? results.map((optimized, index) => (
+          <OptimizedCard
+            key={optimized.model}
+            optimized={optimized}
+            result={rankingMap.get(optimized.model)}
+            index={index}
+          />
+        )) : (
+          <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-5 py-8 text-sm leading-7 text-[var(--ink-soft)] xl:col-span-2">
+            正在等待首个模型完成，结果会按返回顺序插入这里。
+          </div>
+        )}
+      </div>
     </div>
   );
 }

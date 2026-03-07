@@ -1,6 +1,5 @@
 'use client';
 
-import { TimerReset } from 'lucide-react';
 import type { OptimizedResult } from '@/types';
 
 interface ProgressRailProps {
@@ -24,82 +23,104 @@ export function ProgressRail({
 }: ProgressRailProps) {
   const finished = results.filter((item) => item.status === 'done').length;
   const total = results.length;
-  const ranked = results
-    .filter((item) => item.completionRank)
-    .sort((a, b) => (a.completionRank ?? 99) - (b.completionRank ?? 99));
+  const stages = [
+    {
+      key: 'boot',
+      label: '启动加载',
+      active: true,
+      complete: true,
+      detail: '工作台就绪',
+    },
+    {
+      key: 'prompt',
+      label: '用户提问',
+      active: true,
+      complete: true,
+      detail: '原始提示词已接收',
+    },
+    {
+      key: 'match',
+      label: '并行生成',
+      active: phaseState(finished > 0, finished === total && total > 0) !== 'idle',
+      complete: finished === total && total > 0,
+      detail: `${finished}/${total} · ${formatSeconds(optimizeSeconds)}`,
+    },
+    {
+      key: 'judge',
+      label: '综合定稿',
+      active: judgeStatus !== 'idle',
+      complete: judgeStatus === 'done',
+      detail:
+        judgeStatus === 'done'
+          ? `${formatSeconds(judgeSeconds)} 完成`
+          : judgeStatus === 'running'
+            ? `${formatSeconds(judgeSeconds)}`
+            : '等待候选',
+    },
+  ];
 
   return (
-    <section className="rounded-[28px] border border-[rgba(214,185,139,0.18)] bg-[linear-gradient(135deg,rgba(12,15,21,0.96),rgba(31,24,18,0.9))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)]">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--accent-strong)]">
-            Live Race
-          </p>
-          <h3 className="mt-2 text-xl font-semibold text-[var(--ink-strong)]">
-            四路并发优化正在推进
-          </h3>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-sm text-[var(--ink-soft)]">
-          <TimerReset className="size-4 text-[var(--accent)]" />
-          20 秒窗口
-        </div>
+    <section className="rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-5 py-5 shadow-[0_20px_70px_rgba(0,0,0,0.18)]">
+      <div className="flex flex-wrap items-center gap-2">
+        {stages.map((stage, index) => (
+          <div key={stage.key} className="flex items-center gap-2">
+            <div
+              className={`inline-flex items-center rounded-full px-5 py-3 text-sm font-semibold transition ${
+                stage.complete
+                  ? 'bg-[linear-gradient(135deg,#8f5a12,#ffb400)] text-[#151515]'
+                  : stage.active
+                    ? 'bg-[linear-gradient(135deg,#5e3e12,#db9412)] text-[#fff6df] shadow-[0_0_24px_rgba(255,180,0,0.18)]'
+                    : 'bg-[rgba(255,255,255,0.06)] text-[rgba(242,238,230,0.44)]'
+              }`}
+            >
+              {stage.label}
+            </div>
+            {index < stages.length - 1 ? (
+              <span className="px-1 text-[20px] leading-none text-[rgba(242,238,230,0.34)]">›</span>
+            ) : null}
+          </div>
+        ))}
       </div>
 
-      <div className="mt-5 grid gap-3 xl:grid-cols-3">
-        <Step
+      <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_1fr_1.3fr]">
+        <InfoCard
           title="输入点评"
-          state={critiqueReady ? 'done' : critiqueLoading ? 'running' : 'idle'}
-          detail={
-            critiqueReady
-              ? `${formatSeconds(critiqueSeconds)} 完成`
-              : critiqueLoading
-                ? `${formatSeconds(critiqueSeconds)}`
-                : '待命'
-          }
+          state={phaseState(critiqueLoading, critiqueReady)}
+          detail={critiqueReady ? `${formatSeconds(critiqueSeconds)} 完成` : critiqueLoading ? `${formatSeconds(critiqueSeconds)}` : '待命'}
         />
-        <Step
+        <InfoCard
           title="模型竞速"
-          state={finished === total && total > 0 ? 'done' : finished > 0 ? 'running' : 'idle'}
+          state={phaseState(finished > 0, finished === total && total > 0)}
           detail={`${finished}/${total} · ${formatSeconds(optimizeSeconds)}`}
         />
-        <Step
-          title="综合裁判"
-          state={judgeStatus}
-          detail={
-            judgeStatus === 'done'
-              ? `${formatSeconds(judgeSeconds)} 完成`
-              : judgeStatus === 'running'
-                ? `${formatSeconds(judgeSeconds)}`
-                : '等待候选'
-          }
-        />
-      </div>
-
-      <div className="mt-5 flex flex-wrap gap-2">
-        {ranked.length > 0 ? (
-          ranked.map((item) => (
-            <div
-              key={item.model}
-              className="inline-flex items-center gap-2 rounded-full border border-[rgba(214,185,139,0.18)] bg-[rgba(214,185,139,0.08)] px-3 py-2 text-sm text-[var(--ink-strong)]"
-            >
-              <span className="rounded-full bg-[rgba(214,185,139,0.18)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-strong)]">
-                Top {item.completionRank}
-              </span>
-              <span>{item.modelName}</span>
-              <span className="text-[var(--ink-soft)]">{item.latencyMs} ms</span>
-            </div>
-          ))
-        ) : (
-          <div className="text-sm text-[var(--ink-soft)]">
-            首个结果返回后，这里会形成速度榜。
+        <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-4 py-4">
+          <p className="text-sm font-medium text-[var(--ink-strong)]">速度榜</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {results
+              .filter((item) => item.completionRank)
+              .sort((a, b) => (a.completionRank ?? 99) - (b.completionRank ?? 99))
+              .map((item) => (
+                <div
+                  key={item.model}
+                  className="inline-flex items-center gap-2 rounded-full bg-[rgba(255,180,0,0.08)] px-3 py-2 text-sm text-[var(--ink-strong)]"
+                >
+                  <span className="rounded-full bg-[rgba(255,180,0,0.16)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-strong)]">
+                    Top {item.completionRank}
+                  </span>
+                  <span>{item.modelName}</span>
+                </div>
+              ))}
+            {results.every((item) => !item.completionRank) ? (
+              <span className="text-sm text-[var(--ink-soft)]">结果返回后会在这里实时封榜。</span>
+            ) : null}
           </div>
-        )}
+        </div>
       </div>
     </section>
   );
 }
 
-function Step({
+function InfoCard({
   title,
   state,
   detail,
@@ -108,30 +129,37 @@ function Step({
   state: 'idle' | 'running' | 'done';
   detail: string;
 }) {
-  const style =
-    state === 'done'
-      ? 'border-[rgba(214,185,139,0.34)] bg-[rgba(214,185,139,0.12)]'
-      : state === 'running'
-        ? 'border-[rgba(79,123,255,0.36)] bg-[rgba(79,123,255,0.16)]'
-        : 'border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]';
-
   return (
-    <div className={`rounded-[22px] border px-4 py-4 ${style}`}>
+    <div
+      className={`rounded-[22px] border px-4 py-4 ${
+        state === 'done'
+          ? 'border-[rgba(99,214,126,0.28)] bg-[rgba(99,214,126,0.08)]'
+          : state === 'running'
+            ? 'border-[rgba(255,180,0,0.28)] bg-[rgba(255,180,0,0.08)]'
+            : 'border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]'
+      }`}
+    >
       <div className="flex items-center gap-2">
         <span
           className={`size-2.5 rounded-full ${
             state === 'done'
-              ? 'bg-[var(--accent)]'
+              ? 'bg-[#63d67e]'
               : state === 'running'
-                ? 'bg-[rgb(132,168,255)] animate-pulse'
+                ? 'bg-[#ffb400] animate-pulse'
                 : 'bg-[rgba(255,255,255,0.18)]'
           }`}
         />
         <span className="text-sm font-medium text-[var(--ink-strong)]">{title}</span>
       </div>
-      <p className="mt-2 text-sm text-[var(--ink-soft)]">{detail}</p>
+      <div className="mt-2 text-sm text-[var(--ink-soft)]">{detail}</div>
     </div>
   );
+}
+
+function phaseState(active: boolean, complete: boolean) {
+  if (complete) return 'done' as const;
+  if (active) return 'running' as const;
+  return 'idle' as const;
 }
 
 function formatSeconds(value: number) {

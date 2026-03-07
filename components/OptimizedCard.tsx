@@ -13,6 +13,7 @@ interface OptimizedCardProps {
 
 export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const isWorking = optimized.status === 'pending' || optimized.status === 'streaming';
 
   const handleCopy = async () => {
     if (!optimized.optimizedPrompt) return;
@@ -37,14 +38,33 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
   return (
     <motion.article
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+      animate={{
+        opacity: 1,
+        y: isWorking ? [0, -4, 0] : 0,
+      }}
+      transition={{
+        delay: index * 0.05,
+        y: {
+          duration: 2.4 + index * 0.2,
+          repeat: isWorking ? Number.POSITIVE_INFINITY : 0,
+          ease: 'easeInOut',
+        },
+      }}
       className={`flex flex-col overflow-hidden rounded-[28px] border shadow-[0_22px_70px_rgba(24,36,58,0.07)] ${
         result?.rank === 1
           ? 'border-[rgba(208,138,77,0.28)] bg-[linear-gradient(180deg,rgba(31,26,22,0.96),rgba(19,22,28,0.96))]'
           : 'border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]'
       } ${expanded ? 'min-h-[68vh]' : 'h-[360px]'}`}
     >
+      <div
+        className={`h-1 w-full ${
+          optimized.status === 'streaming'
+            ? 'bg-[linear-gradient(90deg,transparent,rgba(255,180,0,0.9),transparent)] animate-pulse'
+            : optimized.status === 'done'
+              ? 'bg-[linear-gradient(90deg,rgba(99,214,126,0.0),rgba(99,214,126,0.9),rgba(99,214,126,0.0))]'
+              : 'bg-transparent'
+        }`}
+      />
       <div className="border-b border-white/5 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -77,6 +97,13 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
             <h3 className="mt-2 text-xl font-semibold text-[var(--ink-strong)]">
               {optimized.modelName}
             </h3>
+            <p className="mt-1 text-sm text-[var(--ink-soft)]">
+              {optimized.status === 'streaming'
+                ? '正在独立重写与收束结构'
+                : optimized.status === 'done'
+                  ? '候选已完成，可进入比较'
+                  : '等待分配执行'}
+            </p>
           </div>
 
           <button
@@ -101,10 +128,22 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
       </div>
 
       <div className={`flex-1 overflow-y-auto px-5 py-4 ${expanded ? 'min-h-[42vh]' : ''}`}>
-        <p className="whitespace-pre-wrap text-[14px] leading-7 text-[var(--ink-strong)]">
-          {previewText}
-          {optimized.status === 'streaming' ? <span className="ml-1 inline-block h-5 w-2 animate-pulse rounded-sm bg-[var(--accent)] align-middle" /> : null}
-        </p>
+        {optimized.status === 'pending' ? (
+          <div className="space-y-3">
+            <div className="h-4 w-[68%] rounded-full bg-[rgba(255,255,255,0.08)]" />
+            <div className="h-4 w-[86%] rounded-full bg-[rgba(255,255,255,0.06)]" />
+            <div className="h-4 w-[72%] rounded-full bg-[rgba(255,255,255,0.06)]" />
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="h-28 rounded-[20px] bg-[rgba(255,255,255,0.04)]" />
+              <div className="h-28 rounded-[20px] bg-[rgba(255,255,255,0.04)]" />
+            </div>
+          </div>
+        ) : (
+          <p className="whitespace-pre-wrap text-[14px] leading-7 text-[var(--ink-strong)]">
+            {previewText}
+            {optimized.status === 'streaming' ? <span className="ml-1 inline-block h-5 w-2 animate-pulse rounded-sm bg-[var(--accent)] align-middle" /> : null}
+          </p>
+        )}
       </div>
 
       <div className="px-5 pb-5">

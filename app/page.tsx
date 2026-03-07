@@ -202,7 +202,7 @@ export default function Home() {
 
     if (validCandidates.length === 0) {
       setError('本轮没有拿到可用候选，请重试。');
-      setPhase('idle');
+      setPhase('done');
       return;
     }
 
@@ -303,7 +303,9 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
-  const visibleResults = results.filter((item) => item.status !== 'error' || item.optimizedPrompt);
+  const visibleResults = results.filter(
+    (item) => item.status !== 'error' || item.optimizedPrompt
+  );
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[var(--page-bg)] text-[var(--ink-strong)]">
@@ -514,6 +516,26 @@ async function streamOptimizer({
     onDone(finalResult);
     return finalResult;
   } catch {
+    try {
+      const fallback = await fetch('/api/optimize-single', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, config, modelId }),
+      });
+      const payload = await parseJsonResponse<{ result?: OptimizedResult; error?: string }>(fallback);
+      const result = payload.result;
+
+      if (result?.optimizedPrompt) {
+        onDone({
+          ...result,
+          status: 'done',
+        });
+        return result;
+      }
+    } catch {
+      // Ignore and surface generic fallback below.
+    }
+
     onError();
     throw new Error('stream failed');
   } finally {
