@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Expand, Minimize2 } from 'lucide-react';
 import type { JudgeResult, OptimizedResult } from '@/types';
@@ -15,6 +15,7 @@ interface OptimizedCardProps {
 export function OptimizedCard({ optimized, result, index, nowMs }: OptimizedCardProps) {
   const [expanded, setExpanded] = useState(false);
   const isWorking = optimized.status === 'pending' || optimized.status === 'streaming';
+  const tailRef = useRef<HTMLSpanElement | null>(null);
 
   const handleCopy = async () => {
     if (!optimized.optimizedPrompt) return;
@@ -44,6 +45,11 @@ export function OptimizedCard({ optimized, result, index, nowMs }: OptimizedCard
       : optimized.startedAtMs
         ? formatSeconds((nowMs - optimized.startedAtMs) / 1000)
         : null;
+
+  useEffect(() => {
+    if (optimized.status !== 'streaming') return;
+    tailRef.current?.scrollIntoView({ block: 'end' });
+  }, [optimized.optimizedPrompt, optimized.status]);
 
   return (
     <motion.article
@@ -152,6 +158,7 @@ export function OptimizedCard({ optimized, result, index, nowMs }: OptimizedCard
           <p className="whitespace-pre-wrap text-[14px] leading-7 text-[var(--ink-strong)]">
             {previewText}
             {optimized.status === 'streaming' ? <span className="ml-1 inline-block h-5 w-2 animate-pulse rounded-sm bg-[var(--accent)] align-middle" /> : null}
+            <span ref={tailRef} className="block h-px w-full" />
           </p>
         )}
       </div>

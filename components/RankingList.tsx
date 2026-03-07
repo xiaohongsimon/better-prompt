@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Expand, Minimize2 } from 'lucide-react';
 import { OptimizedCard } from '@/components/OptimizedCard';
@@ -31,6 +31,12 @@ export function RankingList({
 }: RankingListProps) {
   const [expanded, setExpanded] = useState(false);
   const rankingMap = new Map(rankings.map((ranking) => [ranking.model, ranking]));
+  const synthesisTailRef = useRef<HTMLSpanElement | null>(null);
+
+  useEffect(() => {
+    if (judgeStatus !== 'running') return;
+    synthesisTailRef.current?.scrollIntoView({ block: 'end' });
+  }, [judgeStatus, synthesizedBestPrompt]);
 
   const handleCopySynthesis = async () => {
     if (!synthesizedBestPrompt) return;
@@ -97,6 +103,10 @@ export function RankingList({
               <div className={`mt-3 overflow-y-auto pr-1 ${expanded ? 'max-h-[48vh]' : 'max-h-[320px]'}`}>
                 <p className="whitespace-pre-wrap text-[15px] leading-8 text-[var(--ink-strong)]">
                   {synthesizedBestPrompt || '正在整合四个候选的优点并实时生成综合稿…'}
+                  {judgeStatus === 'running' ? (
+                    <span className="ml-1 inline-block h-5 w-2 animate-pulse rounded-sm bg-[var(--accent)] align-middle" />
+                  ) : null}
+                  <span ref={synthesisTailRef} className="block h-px w-full" />
                 </p>
                 {judgeStatus === 'running' && !synthesizedBestPrompt ? (
                   <div className="mt-4 space-y-3">
