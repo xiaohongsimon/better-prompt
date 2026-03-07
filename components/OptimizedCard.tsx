@@ -47,6 +47,11 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
+              {optimized.completionRank ? (
+                <span className="rounded-full bg-[rgba(214,185,139,0.18)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--accent-strong)]">
+                  Speed Top {optimized.completionRank}
+                </span>
+              ) : null}
               <span
                 className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
                   optimized.status === 'pending'

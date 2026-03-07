@@ -26,7 +26,6 @@ export function RankingList({
   appliedAdvantages,
 }: RankingListProps) {
   const [expanded, setExpanded] = useState(false);
-  const failedResults = results.filter((result) => result.error);
   const rankingMap = new Map(rankings.map((ranking) => [ranking.model, ranking]));
 
   const handleCopySynthesis = async () => {
@@ -37,14 +36,18 @@ export function RankingList({
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        {results.map((optimized, index) => (
+        {results.length > 0 ? results.map((optimized, index) => (
           <OptimizedCard
             key={optimized.model}
             optimized={optimized}
             result={rankingMap.get(optimized.model)}
             index={index}
           />
-        ))}
+        )) : (
+          <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-5 py-8 text-sm leading-7 text-[var(--ink-soft)]">
+            正在等待首个模型完成，结果会按返回顺序插入这里。
+          </div>
+        )}
       </div>
 
       <motion.section
@@ -157,11 +160,6 @@ export function RankingList({
           </div>
         </div>
 
-        {failedResults.length > 0 && (
-          <div className="mt-5 rounded-[28px] border border-[rgba(180,58,38,0.18)] bg-[rgba(86,29,20,0.24)] px-5 py-4 text-sm leading-6 text-[rgb(241,187,173)]">
-            {failedResults.map((result) => `${result.modelName}: ${result.error}`).join('；')}
-          </div>
-        )}
       </motion.section>
     </div>
   );

@@ -59,6 +59,7 @@ export interface OptimizedResult {
   applicableScenarios: string[];
   status?: 'pending' | 'done' | 'error';
   latencyMs?: number;
+  completionRank?: number;
   rawText?: string;
   error?: string;
 }

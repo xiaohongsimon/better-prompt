@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { BookOpen, Expand, Minimize2, Sparkles } from 'lucide-react';
+import { BookOpen, ChevronDown, Expand, Minimize2, Sparkles } from 'lucide-react';
 import type { CritiqueResponse } from '@/types';
 
 interface PromptCritiquePanelProps {
@@ -11,6 +11,7 @@ interface PromptCritiquePanelProps {
 
 export function PromptCritiquePanel({ loading, critique }: PromptCritiquePanelProps) {
   const [expanded, setExpanded] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
     <aside
@@ -27,24 +28,34 @@ export function PromptCritiquePanel({ loading, critique }: PromptCritiquePanelPr
             </p>
           </div>
 
-          <h3 className="mt-3 text-xl font-semibold text-[var(--ink-strong)]">输入点评</h3>
+          <h3 className="mt-3 text-lg font-semibold text-[var(--ink-strong)]">输入点评</h3>
 
           <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-            解释原始提示词已经做对了什么，以及下一次最值得先改哪里。
+            放在最后，供你回看原始提示词的问题与改法。
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setExpanded((value) => !value)}
-          className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-xs text-[var(--ink-soft)] transition hover:text-[var(--ink-strong)]"
-        >
-          {expanded ? <Minimize2 className="size-3.5" /> : <Expand className="size-3.5" />}
-          {expanded ? '还原' : '放大'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-xs text-[var(--ink-soft)] transition hover:text-[var(--ink-strong)]"
+          >
+            <ChevronDown className={`size-3.5 transition ${open ? 'rotate-180' : ''}`} />
+            {open ? '收起' : '展开'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-xs text-[var(--ink-soft)] transition hover:text-[var(--ink-strong)]"
+          >
+            {expanded ? <Minimize2 className="size-3.5" /> : <Expand className="size-3.5" />}
+            {expanded ? '还原' : '放大'}
+          </button>
+        </div>
       </div>
 
-      {loading ? (
+      {open ? loading ? (
         <div className="mt-5 space-y-3">
           <div className="rounded-[24px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
             <div className="mb-2 flex items-center gap-2 text-[var(--ink-strong)]">
@@ -72,7 +83,7 @@ export function PromptCritiquePanel({ loading, critique }: PromptCritiquePanelPr
         <div className="mt-5 rounded-[24px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
           点击优化后，这里会并行出现针对你原始提示词的专业点评。
         </div>
-      )}
+      ) : null}
     </aside>
   );
 }

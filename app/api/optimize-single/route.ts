@@ -80,8 +80,26 @@ export async function POST(request: NextRequest) {
         strategySummary: '',
         keyUpgrades: [],
         applicableScenarios: [],
-        error: error instanceof Error ? error.message : 'Failed to optimize prompt',
+        error: toUserFriendlyError(error),
       } satisfies OptimizedResult,
     });
   }
+}
+
+function toUserFriendlyError(error: unknown) {
+  const message = error instanceof Error ? error.message : 'Failed to optimize prompt';
+
+  if (
+    message.includes('Unexpected token') ||
+    message.includes('is not valid JSON') ||
+    message.includes('Unterminated string')
+  ) {
+    return '未返回可用内容';
+  }
+
+  if (message.includes('401') || message.toLowerCase().includes('api key')) {
+    return '模型调用暂时不可用';
+  }
+
+  return '本轮未返回可用结果';
 }

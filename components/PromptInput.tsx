@@ -12,6 +12,7 @@ interface PromptInputProps {
   footer?: ReactNode;
   submitDisabled?: boolean;
   compact?: boolean;
+  topSlot?: ReactNode;
 }
 
 const EXAMPLES = [
@@ -26,6 +27,7 @@ export function PromptInput({
   footer,
   submitDisabled = false,
   compact = false,
+  topSlot,
 }: PromptInputProps) {
   const [prompt, setPrompt] = useState('');
 
@@ -50,6 +52,8 @@ export function PromptInput({
           先返先看
         </div>
       </div>
+
+      {topSlot}
 
       <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,255,255,0.04)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <Textarea

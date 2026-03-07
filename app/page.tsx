@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Download, RotateCcw, Settings } from 'lucide-react';
 import { PromptInput } from '@/components/PromptInput';
@@ -40,9 +40,9 @@ const DEFAULT_CONFIG: ApiConfig = {
 };
 
 type Phase = 'idle' | 'optimizing' | 'judging' | 'done';
+const MODEL_TIMEOUT_MS = 20_000;
 
 export default function Home() {
-  const isProduction = process.env.NODE_ENV === 'production';
   const [phase, setPhase] = useState<Phase>('idle');
   const [results, setResults] = useState<OptimizedResult[]>([]);
   const [rankings, setRankings] = useState<JudgeResult[]>([]);
@@ -56,6 +56,13 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
   const [originalPrompt, setOriginalPrompt] = useState('');
+  const [completedModels, setCompletedModels] = useState(0);
+  const [critiqueSeconds, setCritiqueSeconds] = useState(0);
+  const [optimizeSeconds, setOptimizeSeconds] = useState(0);
+  const [judgeSeconds, setJudgeSeconds] = useState(0);
+  const [optimizerCount, setOptimizerCount] = useState(DEFAULT_OPTIMIZER_MODEL_IDS.length);
+  const startedAtRef = useRef<number | null>(null);
+  const judgeStartedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -69,13 +76,51 @@ export default function Home() {
     }
   }, []);
 
+  useEffect(() => {
+    if (phase === 'idle') return;
+
+    const timer = window.setInterval(() => {
+      const now = performance.now();
+
+      if (startedAtRef.current) {
+        const elapsed = (now - startedAtRef.current) / 1000;
+        setOptimizeSeconds(elapsed);
+        if (critiqueLoading && !critique) {
+          setCritiqueSeconds(elapsed);
+        }
+      }
+
+      if (judgeStartedAtRef.current) {
+        setJudgeSeconds((now - judgeStartedAtRef.current) / 1000);
+      }
+    }, 100);
+
+    return () => window.clearInterval(timer);
+  }, [phase, critiqueLoading, critique]);
+
+  useEffect(() => {
+    if (critique) {
+      setCritiqueSeconds(optimizeSeconds);
+    }
+  }, [critique, optimizeSeconds]);
+
+  useEffect(() => {
+    if (phase === 'done' && judgeStartedAtRef.current) {
+      setJudgeSeconds((performance.now() - judgeStartedAtRef.current) / 1000);
+    }
+  }, [phase]);
+
   const handleSaveConfig = (nextConfig: ApiConfig) => {
     setConfig(nextConfig);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextConfig));
   };
 
   const handleSubmit = async (prompt: string) => {
-    if (config.optimizerModels.length === 0) {
+    const activeOptimizerModels = AVAILABLE_MODELS.filter((model) => model.role === 'optimizer').map(
+      (model) => model.id
+    );
+
+    if (activeOptimizerModels.length === 0) {
       setError('请至少选择一个优化模型。');
       return;
     }
@@ -89,26 +134,19 @@ export default function Home() {
     setError(null);
     setCritique(null);
     setCritiqueLoading(true);
-    setResults(
-      config.optimizerModels.map((modelId) => {
-        const meta = AVAILABLE_MODELS.find((model) => model.id === modelId);
-        return {
-          model: modelId,
-          modelName: meta?.name || modelId,
-          provider: meta?.provider || 'Unknown',
-          optimizedPrompt: '',
-          strategySummary: '',
-          keyUpgrades: [],
-          applicableScenarios: [],
-          status: 'pending',
-        } satisfies OptimizedResult;
-      })
-    );
+    setResults([]);
     setRankings([]);
     setJudgeSummary('');
     setSynthesizedBestPrompt('');
     setSynthesisRationale('');
     setAppliedAdvantages([]);
+    setCompletedModels(0);
+    setOptimizerCount(activeOptimizerModels.length);
+    setCritiqueSeconds(0);
+    setOptimizeSeconds(0);
+    setJudgeSeconds(0);
+    startedAtRef.current = performance.now();
+    judgeStartedAtRef.current = null;
     setPhase('optimizing');
 
     void (async () => {
@@ -132,17 +170,23 @@ export default function Home() {
 
     try {
       const settledResults = await Promise.all(
-        config.optimizerModels.map(async (modelId) => {
+        activeOptimizerModels.map(async (modelId) => {
           const startedAt = performance.now();
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
 
           try {
             const response = await fetch('/api/optimize-single', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ prompt, config, modelId }),
+              signal: controller.signal,
             });
 
-            const payload = (await response.json()) as { result?: OptimizedResult; error?: string };
+            window.clearTimeout(timeout);
+            const payload = await parseJsonResponse<{ result?: OptimizedResult; error?: string }>(
+              response
+            );
             const fallbackMeta = AVAILABLE_MODELS.find((model) => model.id === modelId);
             const result =
               payload.result ||
@@ -154,25 +198,32 @@ export default function Home() {
                 strategySummary: '',
                 keyUpgrades: [],
                 applicableScenarios: [],
-                error: payload.error || '请求失败',
+                error: payload.error || '本轮未返回可用结果',
                 status: payload.error ? 'error' : 'done',
                 latencyMs: Math.round(performance.now() - startedAt),
               } satisfies OptimizedResult);
 
-            setResults((previous) =>
-              previous.map((item) =>
-                item.model === modelId
-                  ? {
-                      ...item,
-                      ...result,
-                      status: result.error ? 'error' : 'done',
-                      latencyMs: Math.round(performance.now() - startedAt),
-                    }
-                  : item
-              )
-            );
-            return result;
+            const normalizedResult = {
+              ...result,
+              status: result.error ? 'error' : 'done',
+              latencyMs: Math.round(performance.now() - startedAt),
+            } satisfies OptimizedResult;
+
+            setCompletedModels((value) => value + 1);
+            if (!normalizedResult.error && normalizedResult.optimizedPrompt) {
+              setResults((previous) => [
+                ...previous,
+                {
+                  ...normalizedResult,
+                  completionRank: previous.length + 1,
+                },
+              ]);
+            }
+            return normalizedResult;
           } catch (requestError) {
+            window.clearTimeout(timeout);
+            const isTimeout =
+              requestError instanceof DOMException && requestError.name === 'AbortError';
             const fallbackMeta = AVAILABLE_MODELS.find((model) => model.id === modelId);
             const result = {
               model: modelId,
@@ -184,12 +235,10 @@ export default function Home() {
               applicableScenarios: [],
               status: 'error',
               latencyMs: Math.round(performance.now() - startedAt),
-              error: requestError instanceof Error ? requestError.message : '请求失败',
+              error: isTimeout ? 'timeout' : '本轮未返回可用结果',
             } satisfies OptimizedResult;
 
-            setResults((previous) =>
-              previous.map((item) => (item.model === modelId ? result : item))
-            );
+            setCompletedModels((value) => value + 1);
             return result;
           }
         })
@@ -200,13 +249,12 @@ export default function Home() {
       );
 
       if (validCandidates.length === 0) {
-        const details = settledResults
-          .map((result) => `${result.modelName}: ${result.error || '未返回可用结果'}`)
-          .join('；');
-        throw new Error(`所有优化模型都未返回可评审候选。${details}`);
+        throw new Error('本轮没有拿到可用候选，请重试。');
       }
 
       setPhase('judging');
+      judgeStartedAtRef.current = performance.now();
+      setJudgeSeconds(0);
 
       const proofRes = await fetch('/api/create-proof', {
         method: 'POST',
@@ -216,7 +264,9 @@ export default function Home() {
           candidates: validCandidates,
         }),
       });
-      const proofData = (await proofRes.json()) as { submissionProof?: string; error?: string };
+      const proofData = await parseJsonResponse<{ submissionProof?: string; error?: string }>(
+        proofRes
+      );
       if (!proofRes.ok || !proofData.submissionProof) {
         throw new Error(proofData.error || 'Failed to create proof');
       }
@@ -232,7 +282,7 @@ export default function Home() {
         }),
       });
 
-      const judgeData = (await judgeRes.json()) as JudgeResponse & { error?: string };
+      const judgeData = await parseJsonResponse<JudgeResponse & { error?: string }>(judgeRes);
       if (!judgeRes.ok) {
         throw new Error(judgeData.error || 'Failed to judge prompts');
       }
@@ -244,7 +294,7 @@ export default function Home() {
       setAppliedAdvantages(judgeData.appliedAdvantages || []);
       setPhase('done');
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : 'An unexpected error occurred');
+      setError(submitError instanceof Error ? submitError.message : '本轮处理失败，请重试。');
       setPhase('idle');
       setCritiqueLoading(false);
     }
@@ -261,6 +311,12 @@ export default function Home() {
     setAppliedAdvantages([]);
     setCritique(null);
     setCritiqueLoading(false);
+    setCompletedModels(0);
+    setCritiqueSeconds(0);
+    setOptimizeSeconds(0);
+    setJudgeSeconds(0);
+    judgeStartedAtRef.current = null;
+    startedAtRef.current = null;
     setPhase('idle');
   };
 
@@ -360,26 +416,25 @@ export default function Home() {
               onSubmit={handleSubmit}
               isLoading={phase === 'optimizing' || phase === 'judging'}
               compact={phase !== 'idle'}
-              footer={
-                <div className="rounded-[26px] border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
-                  {isProduction
-                    ? '公开访问模式启用服务端密钥保护与限流，用户端不会接触百炼 API Key。'
-                    : '开发模式下可使用本地配置或服务端环境变量。'}
-                </div>
+              topSlot={
+                phase !== 'idle' ? (
+                  <ProgressRail
+                    critiqueLoading={critiqueLoading}
+                    critiqueReady={Boolean(critique)}
+                    completedModels={completedModels}
+                    totalModels={optimizerCount}
+                    judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
+                    critiqueSeconds={critiqueSeconds}
+                    optimizeSeconds={optimizeSeconds}
+                    judgeSeconds={judgeSeconds}
+                  />
+                ) : null
               }
             />
           </div>
 
           {phase !== 'idle' ? (
             <div className="space-y-6">
-              <ProgressRail
-                critiqueLoading={critiqueLoading}
-                critiqueReady={Boolean(critique)}
-                completedModels={results.filter((item) => item.status === 'done' || item.status === 'error').length}
-                totalModels={config.optimizerModels.length}
-                judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
-              />
-              <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
               {error ? (
                 <div className="rounded-[24px] border border-[rgba(180,58,38,0.22)] bg-[rgba(88,30,21,0.28)] px-5 py-4 text-sm leading-6 text-[rgb(244,171,157)]">
                   {error}
@@ -394,6 +449,7 @@ export default function Home() {
                 synthesisRationale={synthesisRationale}
                 appliedAdvantages={appliedAdvantages}
               />
+              <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
             </div>
           ) : null}
         </section>
@@ -407,6 +463,20 @@ export default function Home() {
       />
     </main>
   );
+}
+
+async function parseJsonResponse<T>(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return { error: '本轮未返回可用结果' } as T;
+  }
 }
 
 function buildMarkdownReport({
