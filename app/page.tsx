@@ -82,7 +82,21 @@ export default function Home() {
 
     setOriginalPrompt(prompt);
     setError(null);
-    setResults([]);
+    setResults(
+      config.optimizerModels.map((modelId) => {
+        const meta = AVAILABLE_MODELS.find((model) => model.id === modelId);
+        return {
+          model: modelId,
+          modelName: meta?.name || modelId,
+          provider: meta?.provider || 'Unknown',
+          optimizedPrompt: '',
+          strategySummary: '',
+          keyUpgrades: [],
+          applicableScenarios: [],
+          status: 'pending',
+        } satisfies OptimizedResult;
+      })
+    );
     setRankings([]);
     setJudgeSummary('');
     setSynthesizedBestPrompt('');
@@ -93,6 +107,8 @@ export default function Home() {
     try {
       const settledResults = await Promise.all(
         config.optimizerModels.map(async (modelId) => {
+          const startedAt = performance.now();
+
           try {
             const response = await fetch('/api/optimize-single', {
               method: 'POST',
@@ -113,9 +129,22 @@ export default function Home() {
                 keyUpgrades: [],
                 applicableScenarios: [],
                 error: payload.error || '请求失败',
+                status: payload.error ? 'error' : 'done',
+                latencyMs: Math.round(performance.now() - startedAt),
               } satisfies OptimizedResult);
 
-            setResults((previous) => [...previous, result]);
+            setResults((previous) =>
+              previous.map((item) =>
+                item.model === modelId
+                  ? {
+                      ...item,
+                      ...result,
+                      status: result.error ? 'error' : 'done',
+                      latencyMs: Math.round(performance.now() - startedAt),
+                    }
+                  : item
+              )
+            );
             return result;
           } catch (requestError) {
             const fallbackMeta = AVAILABLE_MODELS.find((model) => model.id === modelId);
@@ -127,10 +156,14 @@ export default function Home() {
               strategySummary: '',
               keyUpgrades: [],
               applicableScenarios: [],
+              status: 'error',
+              latencyMs: Math.round(performance.now() - startedAt),
               error: requestError instanceof Error ? requestError.message : '请求失败',
             } satisfies OptimizedResult;
 
-            setResults((previous) => [...previous, result]);
+            setResults((previous) =>
+              previous.map((item) => (item.model === modelId ? result : item))
+            );
             return result;
           }
         })

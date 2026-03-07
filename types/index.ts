@@ -48,6 +48,8 @@ export interface OptimizedResult {
   strategySummary: string;
   keyUpgrades: string[];
   applicableScenarios: string[];
+  status?: 'pending' | 'done' | 'error';
+  latencyMs?: number;
   rawText?: string;
   error?: string;
 }

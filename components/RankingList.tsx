@@ -25,17 +25,7 @@ export function RankingList({
   appliedAdvantages,
 }: RankingListProps) {
   const failedResults = results.filter((result) => result.error);
-  const validResults = results.filter((result) => !result.error && result.optimizedPrompt);
   const rankingMap = new Map(rankings.map((ranking) => [ranking.model, ranking]));
-
-  const orderedResults =
-    rankings.length > 0
-      ? [...validResults].sort((a, b) => {
-          const aRank = rankingMap.get(a.model)?.rank ?? 999;
-          const bRank = rankingMap.get(b.model)?.rank ?? 999;
-          return aRank - bRank;
-        })
-      : validResults;
 
   const handleCopySynthesis = async () => {
     if (!synthesizedBestPrompt) return;
@@ -45,7 +35,7 @@ export function RankingList({
   return (
     <div className="space-y-6">
       <div className="grid gap-6 xl:grid-cols-4">
-        {orderedResults.map((optimized, index) => (
+        {results.map((optimized, index) => (
           <OptimizedCard
             key={optimized.model}
             optimized={optimized}
