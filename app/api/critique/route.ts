@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   buildCritiqueUserPrompt,
-  extractJsonObject,
-  normalizeCritiquePayload,
+  parseCritiqueResponse,
   PROMPT_CRITIQUE_SYSTEM_PROMPT,
 } from '@/lib/prompts/optimizer';
 import { assertConfig, createClient, getEffectiveConfig } from '@/lib/server/bailian';
 import { enforceOrigin, enforceRateLimit, getClientIp, validatePrompt } from '@/lib/server/security';
-import type { ApiConfig, CritiquePayload } from '@/types';
+import type { ApiConfig } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,8 +36,7 @@ export async function POST(request: NextRequest) {
     });
 
     const content = response.choices[0]?.message?.content || '';
-    const parsed = extractJsonObject(content) as CritiquePayload;
-    const normalized = normalizeCritiquePayload(parsed);
+    const normalized = parseCritiqueResponse(content);
 
     return NextResponse.json(normalized);
   } catch (error) {

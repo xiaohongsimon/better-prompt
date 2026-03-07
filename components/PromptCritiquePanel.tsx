@@ -1,6 +1,7 @@
 'use client';
 
-import { BookOpen, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen, Expand, Minimize2, Sparkles } from 'lucide-react';
 import type { CritiqueResponse } from '@/types';
 
 interface PromptCritiquePanelProps {
@@ -9,22 +10,39 @@ interface PromptCritiquePanelProps {
 }
 
 export function PromptCritiquePanel({ loading, critique }: PromptCritiquePanelProps) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <aside className="rounded-[32px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)]">
-      <div className="flex items-center gap-2">
-        <BookOpen className="size-4 text-[var(--accent)]" />
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
-          Prompt Coach
-        </p>
+    <aside
+      className={`rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] ${
+        expanded ? 'min-h-[70vh]' : ''
+      }`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <BookOpen className="size-4 text-[var(--accent)]" />
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
+              Prompt Coach
+            </p>
+          </div>
+
+          <h3 className="mt-3 text-xl font-semibold text-[var(--ink-strong)]">输入点评</h3>
+
+          <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+            解释原始提示词已经做对了什么，以及下一次最值得先改哪里。
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-xs text-[var(--ink-soft)] transition hover:text-[var(--ink-strong)]"
+        >
+          {expanded ? <Minimize2 className="size-3.5" /> : <Expand className="size-3.5" />}
+          {expanded ? '还原' : '放大'}
+        </button>
       </div>
-
-      <h3 className="mt-3 text-xl font-semibold text-[var(--ink-strong)]">
-        输入点评
-      </h3>
-
-      <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-        一边生成优化结果，一边解释你的原始提示词哪里好、哪里还可以更专业。
-      </p>
 
       {loading ? (
         <div className="mt-5 space-y-3">
@@ -39,7 +57,7 @@ export function PromptCritiquePanel({ loading, critique }: PromptCritiquePanelPr
           <div className="h-18 rounded-[22px] bg-[rgba(255,255,255,0.04)]" />
         </div>
       ) : critique ? (
-        <div className="mt-5 max-h-[720px] space-y-4 overflow-y-auto pr-1">
+        <div className={`mt-5 space-y-4 overflow-y-auto pr-1 ${expanded ? 'max-h-[56vh]' : 'max-h-[380px]'}`}>
           <PanelBlock title={`总体判断 · ${critique.score}/100`}>
             {critique.overallAssessment}
           </PanelBlock>

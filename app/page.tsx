@@ -306,17 +306,17 @@ export default function Home() {
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-wrap items-start justify-between gap-6 rounded-[36px] border border-[var(--line)] bg-[rgba(255,255,255,0.025)] px-6 py-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur"
+          className="flex flex-wrap items-start justify-between gap-4 rounded-[30px] border border-[var(--line)] bg-[rgba(255,255,255,0.025)] px-5 py-4 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur"
         >
           <div className="max-w-3xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--accent-strong)]">
               BetterPrompt
             </p>
-            <h1 className="mt-3 text-4xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)] md:text-5xl">
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)] md:text-[42px]">
               多模型提示词优化工作台
             </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--ink-soft)]">
-              四个模型并发重写，Kimi 负责排序与综合定稿。
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--ink-soft)]">
+              多路优化、逐个返回、裁判综合定稿。
             </p>
           </div>
 
@@ -354,11 +354,12 @@ export default function Home() {
           </div>
         </motion.header>
 
-        <section className={`mt-6 grid gap-6 ${phase === 'idle' ? 'xl:grid-cols-1' : 'xl:grid-cols-[0.52fr_1.48fr]'}`}>
+        <section className={`mt-6 grid gap-6 ${phase === 'idle' ? 'xl:grid-cols-1' : 'xl:grid-cols-[0.42fr_1.58fr]'}`}>
           <div className="rounded-[36px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur">
             <PromptInput
               onSubmit={handleSubmit}
               isLoading={phase === 'optimizing' || phase === 'judging'}
+              compact={phase !== 'idle'}
               footer={
                 <div className="rounded-[26px] border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
                   {isProduction
@@ -379,32 +380,22 @@ export default function Home() {
                 judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
               />
               <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
+              {error ? (
+                <div className="rounded-[24px] border border-[rgba(180,58,38,0.22)] bg-[rgba(88,30,21,0.28)] px-5 py-4 text-sm leading-6 text-[rgb(244,171,157)]">
+                  {error}
+                </div>
+              ) : null}
+              <RankingList
+                rankings={rankings}
+                results={results}
+                judgeSummary={judgeSummary}
+                judgeStatus={phase === 'judging' ? 'running' : rankings.length > 0 ? 'done' : 'idle'}
+                synthesizedBestPrompt={synthesizedBestPrompt}
+                synthesisRationale={synthesisRationale}
+                appliedAdvantages={appliedAdvantages}
+              />
             </div>
           ) : null}
-        </section>
-
-        <section className="mt-6">
-          {error ? (
-            <div className="mb-6 rounded-[28px] border border-[rgba(180,58,38,0.12)] bg-[rgba(255,241,237,0.9)] px-5 py-4 text-sm leading-6 text-[rgb(132,39,27)]">
-              {error}
-            </div>
-          ) : null}
-
-          {results.length > 0 ? (
-            <RankingList
-              rankings={rankings}
-              results={results}
-              judgeSummary={judgeSummary}
-              judgeStatus={phase === 'judging' ? 'running' : rankings.length > 0 ? 'done' : 'idle'}
-              synthesizedBestPrompt={synthesizedBestPrompt}
-              synthesisRationale={synthesisRationale}
-              appliedAdvantages={appliedAdvantages}
-            />
-          ) : (
-            <div className="rounded-[34px] border border-dashed border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-8 py-16 text-center text-sm leading-7 text-[var(--ink-soft)]">
-              结果区会先展示四个模型卡片，再在最下方给出 Kimi 的排序与综合版本。
-            </div>
-          )}
         </section>
       </div>
 

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   buildJudgeUserPrompt,
   DEFAULT_JUDGE_SYSTEM_PROMPT,
-  extractJsonObject,
-  normalizeJudgePayload,
+  parseJudgeResponse,
 } from '@/lib/prompts/optimizer';
 import { assertConfig, createClient, getEffectiveConfig, getModelMeta } from '@/lib/server/bailian';
 import {
@@ -12,7 +11,7 @@ import {
   getClientIp,
   verifySubmissionProof,
 } from '@/lib/server/security';
-import type { ApiConfig, JudgePromptPayload, JudgeResult, OptimizedResult } from '@/types';
+import type { ApiConfig, JudgeResult, OptimizedResult } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,8 +58,7 @@ export async function POST(request: NextRequest) {
     });
 
     const content = response.choices[0]?.message?.content || '';
-    const parsed = extractJsonObject(content) as JudgePromptPayload;
-    const normalized = normalizeJudgePayload(parsed);
+    const normalized = parseJudgeResponse(content);
 
     const rankings: JudgeResult[] = normalized.ranking.map((entry, index) => {
       const meta = getModelMeta(entry.model);

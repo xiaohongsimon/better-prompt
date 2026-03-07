@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, Copy } from 'lucide-react';
+import { ChevronDown, Copy, Expand, Minimize2 } from 'lucide-react';
 import type { JudgeResult, OptimizedResult } from '@/types';
 
 interface OptimizedCardProps {
@@ -11,6 +12,8 @@ interface OptimizedCardProps {
 }
 
 export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) {
+  const [expanded, setExpanded] = useState(false);
+
   const handleCopy = async () => {
     if (!optimized.optimizedPrompt) return;
     await navigator.clipboard.writeText(optimized.optimizedPrompt);
@@ -34,23 +37,23 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className={`flex h-[360px] flex-col overflow-hidden rounded-[30px] border shadow-[0_22px_70px_rgba(24,36,58,0.07)] ${
+      className={`flex flex-col overflow-hidden rounded-[28px] border shadow-[0_22px_70px_rgba(24,36,58,0.07)] ${
         result?.rank === 1
           ? 'border-[rgba(208,138,77,0.28)] bg-[linear-gradient(180deg,rgba(31,26,22,0.96),rgba(19,22,28,0.96))]'
           : 'border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]'
-      }`}
+      } ${expanded ? 'min-h-[68vh]' : 'h-[330px]'}`}
     >
-      <div className="border-b border-black/5 px-5 py-4">
+      <div className="border-b border-white/5 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
                   optimized.status === 'pending'
-                    ? 'bg-[rgba(18,28,45,0.08)] text-[var(--ink-soft)]'
+                    ? 'bg-[rgba(80,116,255,0.18)] text-[rgb(174,198,255)]'
                     : optimized.status === 'error'
-                      ? 'bg-[rgba(180,58,38,0.12)] text-[rgb(132,39,27)]'
-                      : 'bg-[var(--ink-strong)] text-white'
+                      ? 'bg-[rgba(180,58,38,0.2)] text-[rgb(244,171,157)]'
+                      : 'bg-[rgba(214,185,139,0.18)] text-[var(--accent-strong)]'
                 }`}
               >
                 {statusLabel}
@@ -68,6 +71,16 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
           </div>
 
           <button
+            type="button"
+            onClick={() => setExpanded((value) => !value)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-xs text-[var(--ink-soft)]"
+          >
+            {expanded ? <Minimize2 className="size-3.5" /> : <Expand className="size-3.5" />}
+            {expanded ? '还原' : '放大'}
+          </button>
+        </div>
+        <div className="mt-3">
+          <button
             onClick={handleCopy}
             disabled={!optimized.optimizedPrompt || optimized.status === 'pending'}
             className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-xs text-[var(--ink-strong)] disabled:opacity-40"
@@ -78,7 +91,7 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div className={`flex-1 overflow-y-auto px-5 py-4 ${expanded ? 'min-h-[42vh]' : ''}`}>
         <p className="whitespace-pre-wrap text-[14px] leading-7 text-[var(--ink-strong)]">
           {previewText}
         </p>

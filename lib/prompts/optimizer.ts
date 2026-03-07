@@ -229,6 +229,60 @@ export function normalizeCritiquePayload(payload: CritiquePayload) {
   };
 }
 
+export function parseJudgeResponse(text: string) {
+  try {
+    const parsed = extractJsonObject(text) as Partial<JudgePromptPayload>;
+
+    return normalizeJudgePayload({
+      ranking: Array.isArray(parsed.ranking) ? parsed.ranking : [],
+      overall_summary: parsed.overall_summary ?? '',
+      synthesized_best_prompt: parsed.synthesized_best_prompt ?? '',
+      synthesis_rationale: parsed.synthesis_rationale ?? '',
+      applied_advantages: Array.isArray(parsed.applied_advantages)
+        ? parsed.applied_advantages
+        : [],
+    } as JudgePromptPayload);
+  } catch {
+    const fallback = text.trim();
+
+    return {
+      ranking: [],
+      overallSummary: fallback || '裁判未返回结构化排序结果。',
+      synthesizedBestPrompt: '',
+      synthesisRationale: '',
+      appliedAdvantages: [],
+    };
+  }
+}
+
+export function parseCritiqueResponse(text: string) {
+  try {
+    const parsed = extractJsonObject(text) as Partial<CritiquePayload>;
+
+    return normalizeCritiquePayload({
+      overall_assessment: parsed.overall_assessment ?? '',
+      score: typeof parsed.score === 'number' ? parsed.score : 0,
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+      issues: Array.isArray(parsed.issues) ? parsed.issues : [],
+      rewrite_principles: Array.isArray(parsed.rewrite_principles)
+        ? parsed.rewrite_principles
+        : [],
+      quick_fix_example: parsed.quick_fix_example ?? '',
+    } as CritiquePayload);
+  } catch {
+    const fallback = text.trim();
+
+    return normalizeCritiquePayload({
+      overall_assessment: fallback || '点评结果未按结构化格式返回。',
+      score: 0,
+      strengths: [],
+      issues: [],
+      rewrite_principles: [],
+      quick_fix_example: '',
+    });
+  }
+}
+
 function extractBalancedJson(text: string) {
   const start = text.indexOf('{');
   if (start === -1) return '';
@@ -271,12 +325,78 @@ function parseJsonWithRepair(input: string) {
   try {
     return JSON.parse(input);
   } catch {
-    const repaired = input
-      .replace(/[“”]/g, '"')
-      .replace(/[‘’]/g, "'")
-      .replace(/,\s*([}\]])/g, '$1')
-      .replace(/[\u0000-\u0019]+/g, ' ');
+    const repaired = repairJsonString(input);
 
     return JSON.parse(repaired);
   }
+}
+
+function repairJsonString(input: string) {
+  const base = input
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
+    .replace(/,\s*([}\]])/g, '$1');
+
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  let braceCount = 0;
+  let bracketCount = 0;
+
+  for (const char of base) {
+    if (inString) {
+      if (escaped) {
+        result += char;
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        result += char;
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = false;
+        result += char;
+        continue;
+      }
+
+      if (char === '\n' || char === '\r') {
+        result += '\\n';
+        continue;
+      }
+
+      result += char;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      result += char;
+      continue;
+    }
+
+    if (char === '{') braceCount += 1;
+    if (char === '}') braceCount -= 1;
+    if (char === '[') bracketCount += 1;
+    if (char === ']') bracketCount -= 1;
+
+    result += char;
+  }
+
+  if (inString) {
+    result += '"';
+  }
+
+  if (bracketCount > 0) {
+    result += ']'.repeat(bracketCount);
+  }
+
+  if (braceCount > 0) {
+    result += '}'.repeat(braceCount);
+  }
+
+  return result.replace(/[\u0000-\u0019]+/g, ' ');
 }

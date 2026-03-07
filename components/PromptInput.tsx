@@ -11,6 +11,7 @@ interface PromptInputProps {
   isLoading: boolean;
   footer?: ReactNode;
   submitDisabled?: boolean;
+  compact?: boolean;
 }
 
 const EXAMPLES = [
@@ -24,6 +25,7 @@ export function PromptInput({
   isLoading,
   footer,
   submitDisabled = false,
+  compact = false,
 }: PromptInputProps) {
   const [prompt, setPrompt] = useState('');
 
@@ -34,13 +36,13 @@ export function PromptInput({
   };
 
   return (
-    <section className="space-y-6">
+    <section className={`space-y-6 ${compact ? 'xl:space-y-5' : ''}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[var(--accent-strong)]">
             Input
           </p>
-          <h2 className="mt-3 text-2xl font-semibold leading-tight text-[var(--ink-strong)]">
+          <h2 className={`mt-3 font-semibold leading-tight text-[var(--ink-strong)] ${compact ? 'text-xl' : 'text-2xl'}`}>
             输入原始提示词
           </h2>
         </div>
@@ -54,12 +56,12 @@ export function PromptInput({
           placeholder="例如：我要让 AI 帮我写一份面向投资人的 SaaS 产品介绍，但我要它逻辑清楚、术语专业、结构完整，并能控制输出格式。"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
-          className="min-h-[168px] rounded-[24px] border-0 bg-transparent px-4 py-4 text-[17px] leading-8 text-[var(--ink-strong)] placeholder:text-[rgba(242,238,230,0.28)] shadow-none focus-visible:ring-0"
+          className={`rounded-[24px] border-0 bg-transparent px-4 py-4 text-[17px] leading-8 text-[var(--ink-strong)] placeholder:text-[rgba(242,238,230,0.28)] shadow-none focus-visible:ring-0 ${compact ? 'min-h-[132px]' : 'min-h-[168px]'}`}
           disabled={isLoading}
         />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className={`flex flex-wrap gap-2 ${compact ? 'max-w-3xl' : ''}`}>
         {EXAMPLES.map((example) => (
           <button
             key={example}

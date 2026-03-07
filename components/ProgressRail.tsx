@@ -16,8 +16,8 @@ export function ProgressRail({
   judgeStatus,
 }: ProgressRailProps) {
   return (
-    <section className="rounded-[28px] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] p-4">
-      <div className="flex flex-wrap gap-3">
+    <section className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] p-4">
+      <div className="grid gap-3 xl:grid-cols-3">
         <Step
           title="输入点评"
           status={critiqueReady ? 'done' : critiqueLoading ? 'running' : 'idle'}
@@ -51,11 +51,17 @@ function Step({
     status === 'done'
       ? 'bg-[var(--accent)]'
       : status === 'running'
-        ? 'bg-[var(--ink-strong)] animate-pulse'
+        ? 'bg-[rgb(130,165,255)] animate-pulse'
         : 'bg-[rgba(255,255,255,0.16)]';
+  const panelClass =
+    status === 'done'
+      ? 'border-[rgba(214,185,139,0.26)] bg-[linear-gradient(135deg,rgba(214,185,139,0.16),rgba(255,255,255,0.03))]'
+      : status === 'running'
+        ? 'border-[rgba(100,133,255,0.26)] bg-[linear-gradient(135deg,rgba(73,107,211,0.22),rgba(255,255,255,0.03))]'
+        : 'border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)]';
 
   return (
-    <div className="min-w-[150px] flex-1 rounded-[20px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
+    <div className={`min-w-[150px] rounded-[20px] border px-4 py-3 ${panelClass}`}>
       <div className="flex items-center gap-2">
         <span className={`size-2.5 rounded-full ${dotClass}`} />
         <span className="text-sm font-medium text-[var(--ink-strong)]">{title}</span>
