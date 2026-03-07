@@ -114,6 +114,23 @@ export const PROMPT_CRITIQUE_SYSTEM_PROMPT = `你是一名顶级 Prompt Coach，
   "quick_fix_example": "一版简短的示例改写"
 }`;
 
+export const DEFAULT_SYNTHESIZER_SYSTEM_PROMPT = `你是一名世界级 Prompt Synthesizer。你的唯一任务，是从多份“优化后的提示词候选”中尽快融合出一版可直接复制使用的最佳最终稿。
+
+要求：
+- 你的第一优先级是产出 synthesized_best_prompt，而不是评分。
+- 必须优先保留最有价值的结构、约束、角色设定、输入要求、输出格式和质量标准。
+- 不要机械拼接，要融合成一版自然、完整、专业、可执行的最终提示词。
+- 默认使用中文输出；只有当原始提示词明确要求英文或其他语言时，才切换对应语言。
+- synthesis_rationale 只用简洁说明为什么这样融合。
+- applied_advantages 用简短短语列出吸收的优点。
+
+严格按以下 JSON 输出，不要加 Markdown 代码块：
+{
+  "synthesized_best_prompt": "融合后的最终提示词",
+  "synthesis_rationale": "为什么这样融合",
+  "applied_advantages": ["吸收点1", "吸收点2", "吸收点3"]
+}`;
+
 export function buildOptimizerUserPrompt(originalPrompt: string) {
   return `请优化下面这条原始提示词。
 
@@ -164,6 +181,35 @@ ${originalPrompt}
 """
 
 请站在 Prompt Coach 的角度，输出用户可以直接理解和学习的结构化点评。`;
+}
+
+export function buildSynthesizerUserPrompt(
+  originalPrompt: string,
+  candidates: OptimizedResult[]
+) {
+  const candidateText = candidates
+    .map((candidate, index) => {
+      return [
+        `候选 ${index + 1}`,
+        `model: ${candidate.model}`,
+        `provider: ${candidate.provider}`,
+        `optimized_prompt:`,
+        candidate.optimizedPrompt,
+      ].join('\n');
+    })
+    .join('\n\n');
+
+  return `请只做一件事：尽快融合出最佳最终稿。
+
+原始提示词：
+"""
+${originalPrompt}
+"""
+
+候选列表：
+${candidateText}
+
+请严格输出 JSON。`;
 }
 
 export function extractJsonObject(text: string) {

@@ -3,22 +3,14 @@ import type { OptimizedResult } from '@/types';
 
 interface ProgressRailProps {
   results: OptimizedResult[];
-  critiqueLoading: boolean;
-  critiqueReady: boolean;
   judgeStatus: 'idle' | 'running' | 'done';
-  critiqueSeconds: number;
   optimizeSeconds: number;
-  judgeSeconds: number;
 }
 
 export function ProgressRail({
   results,
-  critiqueLoading,
-  critiqueReady,
   judgeStatus,
-  critiqueSeconds,
   optimizeSeconds,
-  judgeSeconds,
 }: ProgressRailProps) {
   const modelResults = results.filter((item) => item.status !== 'error');
   const finished = modelResults.filter((item) => item.status === 'done').length;
@@ -43,7 +35,6 @@ export function ProgressRail({
       label: '并行生成',
       active: phaseState(finished > 0, finished === total && total > 0) !== 'idle',
       complete: finished === total && total > 0,
-      detail: `${finished}/${total} · ${formatSeconds(optimizeSeconds)}`,
     },
   ];
 
@@ -53,10 +44,6 @@ export function ProgressRail({
       label: '综合定稿',
       active: true,
       complete: judgeStatus === 'done',
-      detail:
-        judgeStatus === 'done'
-          ? `${formatSeconds(judgeSeconds)} 完成`
-          : `${formatSeconds(judgeSeconds)}`,
     });
   }
 
@@ -83,55 +70,10 @@ export function ProgressRail({
         ))}
       </div>
 
-      <div className="mt-4 grid gap-3 xl:grid-cols-2">
-        <InfoCard
-          title="输入点评"
-          state={phaseState(critiqueLoading, critiqueReady)}
-          detail={critiqueReady ? `${formatSeconds(critiqueSeconds)} 完成` : critiqueLoading ? `${formatSeconds(critiqueSeconds)}` : '待命'}
-        />
-        <InfoCard
-          title="模型竞速"
-          state={phaseState(finished > 0, finished === total && total > 0)}
-          detail={`${finished}/${total} · ${formatSeconds(optimizeSeconds)}`}
-        />
+      <div className="mt-4 text-sm text-[var(--ink-soft)]">
+        已完成 {finished}/{total} 路候选，当前竞速计时 {formatSeconds(optimizeSeconds)}。
       </div>
     </section>
-  );
-}
-
-function InfoCard({
-  title,
-  state,
-  detail,
-}: {
-  title: string;
-  state: 'idle' | 'running' | 'done';
-  detail: string;
-}) {
-  return (
-    <div
-      className={`rounded-[22px] border px-4 py-4 ${
-        state === 'done'
-          ? 'border-[rgba(99,214,126,0.28)] bg-[rgba(99,214,126,0.08)]'
-          : state === 'running'
-            ? 'border-[rgba(255,180,0,0.28)] bg-[rgba(255,180,0,0.08)]'
-            : 'border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]'
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <span
-          className={`size-2.5 rounded-full ${
-            state === 'done'
-              ? 'bg-[#63d67e]'
-              : state === 'running'
-                ? 'bg-[#ffb400] animate-pulse'
-                : 'bg-[rgba(255,255,255,0.18)]'
-          }`}
-        />
-        <span className="text-sm font-medium text-[var(--ink-strong)]">{title}</span>
-      </div>
-      <div className="mt-2 text-sm text-[var(--ink-soft)]">{detail}</div>
-    </div>
   );
 }
 

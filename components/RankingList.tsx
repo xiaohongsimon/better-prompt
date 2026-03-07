@@ -58,6 +58,12 @@ export function RankingList({
                   ? judgeSummary
                   : '四路候选已收齐，Kimi 正在融合最优结构、约束和输出格式。'}
               </p>
+              {judgeStatus === 'running' ? (
+                <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(214,185,139,0.18)] bg-[rgba(214,185,139,0.08)] px-3 py-2 text-sm text-[var(--accent-strong)]">
+                  <span className="size-2 rounded-full bg-[var(--accent)] animate-pulse" />
+                  正在定稿
+                </div>
+              ) : null}
             </div>
 
             <button
@@ -90,6 +96,13 @@ export function RankingList({
                 <p className="whitespace-pre-wrap text-[15px] leading-8 text-[var(--ink-strong)]">
                   {synthesizedBestPrompt || '正在整合四个候选的优点并实时生成综合稿…'}
                 </p>
+                {judgeStatus === 'running' && !synthesizedBestPrompt ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="h-4 w-[72%] rounded-full bg-[rgba(255,255,255,0.08)] animate-pulse" />
+                    <div className="h-4 w-[84%] rounded-full bg-[rgba(255,255,255,0.06)] animate-pulse" />
+                    <div className="h-4 w-[66%] rounded-full bg-[rgba(255,255,255,0.05)] animate-pulse" />
+                  </div>
+                ) : null}
               </div>
             </div>
 

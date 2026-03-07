@@ -56,9 +56,7 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
   const [originalPrompt, setOriginalPrompt] = useState('');
-  const [critiqueSeconds, setCritiqueSeconds] = useState(0);
   const [optimizeSeconds, setOptimizeSeconds] = useState(0);
-  const [judgeSeconds, setJudgeSeconds] = useState(0);
   const [nowMs, setNowMs] = useState(0);
   const startedAtRef = useRef<number | null>(null);
   const judgeStartedAtRef = useRef<number | null>(null);
@@ -89,13 +87,6 @@ export default function Home() {
       if (startedAtRef.current) {
         const elapsed = (now - startedAtRef.current) / 1000;
         setOptimizeSeconds(elapsed);
-        if (critiqueLoading) {
-          setCritiqueSeconds(elapsed);
-        }
-      }
-
-      if (judgeStartedAtRef.current) {
-        setJudgeSeconds((now - judgeStartedAtRef.current) / 1000);
       }
     }, 100);
 
@@ -118,15 +109,13 @@ export default function Home() {
     setError(null);
     setOriginalPrompt(prompt);
     setCritique(null);
-    setCritiqueLoading(true);
+    setCritiqueLoading(false);
     setRankings([]);
     setJudgeSummary('');
     setSynthesizedBestPrompt('');
     setSynthesisRationale('');
     setAppliedAdvantages([]);
-    setCritiqueSeconds(0);
     setOptimizeSeconds(0);
-    setJudgeSeconds(0);
     raceRankRef.current = 0;
     judgeTriggeredRef.current = false;
     startedAtRef.current = performance.now();
@@ -153,8 +142,6 @@ export default function Home() {
         startedAtMs: performance.now(),
       }))
     );
-
-    void runCritique(prompt, config, setCritique, setCritiqueLoading);
 
     const settled = await Promise.allSettled(
       activeOptimizerModels.map((model) =>
@@ -241,9 +228,7 @@ export default function Home() {
     setAppliedAdvantages([]);
     setCritique(null);
     setCritiqueLoading(false);
-    setCritiqueSeconds(0);
     setOptimizeSeconds(0);
-    setJudgeSeconds(0);
     startedAtRef.current = null;
     judgeStartedAtRef.current = null;
     judgeTriggeredRef.current = false;
@@ -277,7 +262,7 @@ export default function Home() {
         throw new Error(proofData.error || 'Failed to create proof');
       }
 
-      const judgeRes = await fetch('/api/judge', {
+      const synthRes = await fetch('/api/synthesize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -287,22 +272,30 @@ export default function Home() {
           submissionProof: proofData.submissionProof,
         }),
       });
-      const judgeData = await parseJsonResponse<JudgeResponse & { error?: string }>(judgeRes);
+      const synthData = await parseJsonResponse<JudgeResponse & { error?: string }>(synthRes);
 
-      if (!judgeRes.ok) {
-        throw new Error(judgeData.error || 'Failed to judge prompts');
+      if (!synthRes.ok) {
+        throw new Error(synthData.error || 'Failed to synthesize prompt');
       }
 
-      setRankings(judgeData.rankings || []);
-      setJudgeSummary(judgeData.judgeSummary || '');
-      setSynthesizedBestPrompt(judgeData.synthesizedBestPrompt || '');
-      setSynthesisRationale(judgeData.synthesisRationale || '');
-      setAppliedAdvantages(judgeData.appliedAdvantages || []);
-      if (judgeStartedAtRef.current) {
-        setJudgeSeconds((performance.now() - judgeStartedAtRef.current) / 1000);
-      }
+      setSynthesizedBestPrompt(synthData.synthesizedBestPrompt || '');
+      setSynthesisRationale(synthData.synthesisRationale || '');
+      setAppliedAdvantages(synthData.appliedAdvantages || []);
       judgeStartedAtRef.current = null;
       setPhase('done');
+
+      void runPostAnalysis({
+        prompt,
+        candidates,
+        config,
+        submissionProof: proofData.submissionProof,
+        setRankings,
+        setJudgeSummary,
+        setSynthesisRationale,
+        setAppliedAdvantages,
+        setCritique,
+        setCritiqueLoading,
+      });
     } catch {
       judgeStartedAtRef.current = null;
       setError('综合裁判暂时未完成，请稍后重试。');
@@ -418,12 +411,8 @@ export default function Home() {
           <section ref={statusRailRef} className="mt-6">
             <ProgressRail
               results={results}
-              critiqueLoading={critiqueLoading}
-              critiqueReady={Boolean(critique)}
               judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
-              critiqueSeconds={critiqueSeconds}
               optimizeSeconds={optimizeSeconds}
-              judgeSeconds={judgeSeconds}
             />
           </section>
         ) : null}
@@ -514,6 +503,56 @@ async function runCritique(
   } finally {
     setCritiqueLoading(false);
   }
+}
+
+async function runPostAnalysis({
+  prompt,
+  candidates,
+  config,
+  submissionProof,
+  setRankings,
+  setJudgeSummary,
+  setSynthesisRationale,
+  setAppliedAdvantages,
+  setCritique,
+  setCritiqueLoading,
+}: {
+  prompt: string;
+  candidates: OptimizedResult[];
+  config: ApiConfig;
+  submissionProof: string;
+  setRankings: (value: JudgeResult[]) => void;
+  setJudgeSummary: (value: string) => void;
+  setSynthesisRationale: (value: string) => void;
+  setAppliedAdvantages: (value: string[]) => void;
+  setCritique: (value: CritiqueResponse | null) => void;
+  setCritiqueLoading: (value: boolean) => void;
+}) {
+  try {
+    const judgeRes = await fetch('/api/judge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        originalPrompt: prompt,
+        candidates,
+        config,
+        submissionProof,
+      }),
+    });
+    const judgeData = await parseJsonResponse<JudgeResponse & { error?: string }>(judgeRes);
+
+    if (judgeRes.ok) {
+      setRankings(judgeData.rankings || []);
+      setJudgeSummary(judgeData.judgeSummary || '');
+      setSynthesisRationale(judgeData.synthesisRationale || '');
+      setAppliedAdvantages(judgeData.appliedAdvantages || []);
+    }
+  } catch {
+    // Ignore background ranking failure.
+  }
+
+  setCritiqueLoading(true);
+  await runCritique(prompt, config, setCritique, setCritiqueLoading);
 }
 
 async function streamOptimizer({
