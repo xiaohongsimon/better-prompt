@@ -44,17 +44,17 @@ export function PromptInput({
             输入原始提示词
           </h2>
         </div>
-        <div className="rounded-full border border-[rgba(18,28,45,0.08)] bg-[rgba(255,255,255,0.7)] px-4 py-2 text-sm text-[var(--ink-soft)]">
+        <div className="rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm text-[var(--ink-soft)]">
           先返先看
         </div>
       </div>
 
-      <div className="rounded-[32px] border border-[rgba(255,255,255,0.7)] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(248,243,235,0.78))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+      <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,255,255,0.04)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <Textarea
           placeholder="例如：我要让 AI 帮我写一份面向投资人的 SaaS 产品介绍，但我要它逻辑清楚、术语专业、结构完整，并能控制输出格式。"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
-          className="min-h-[168px] rounded-[24px] border-0 bg-transparent px-4 py-4 text-[17px] leading-8 shadow-none focus-visible:ring-0"
+          className="min-h-[168px] rounded-[24px] border-0 bg-transparent px-4 py-4 text-[17px] leading-8 text-[var(--ink-strong)] placeholder:text-[rgba(242,238,230,0.28)] shadow-none focus-visible:ring-0"
           disabled={isLoading}
         />
       </div>
@@ -66,7 +66,7 @@ export function PromptInput({
             type="button"
             onClick={() => setPrompt(example)}
             disabled={isLoading}
-            className="rounded-full border border-[rgba(18,28,45,0.08)] bg-white/72 px-3 py-1.5 text-sm text-[var(--ink-soft)] transition hover:border-[var(--accent)] hover:text-[var(--ink-strong)]"
+            className="rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-sm text-[var(--ink-soft)] transition hover:border-[var(--accent)] hover:text-[var(--ink-strong)]"
           >
             {example}
           </button>
@@ -82,7 +82,7 @@ export function PromptInput({
         <Button
           onClick={handleSubmit}
           disabled={!prompt.trim() || isLoading || submitDisabled}
-          className="h-14 rounded-full bg-[var(--ink-strong)] px-6 text-[15px] font-semibold text-white hover:bg-[var(--accent-strong)]"
+          className="h-14 rounded-full bg-[var(--accent)] px-6 text-[15px] font-semibold text-[var(--accent-foreground)] hover:bg-[var(--accent-strong)]"
         >
           {isLoading ? (
             <>

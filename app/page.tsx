@@ -299,13 +299,13 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[var(--page-bg)] text-[var(--ink-strong)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(208,138,77,0.16),transparent_24%),radial-gradient(circle_at_85%_12%,rgba(93,116,144,0.1),transparent_18%),linear-gradient(180deg,#0d1016_0%,#11151d_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_26%),linear-gradient(180deg,#0b0d12_0%,#0f1218_100%)]" />
 
       <div className="relative mx-auto max-w-[1480px] px-5 py-6 md:px-8 md:py-8">
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-wrap items-start justify-between gap-6 rounded-[36px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-6 py-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur"
+          className="flex flex-wrap items-start justify-between gap-6 rounded-[36px] border border-[var(--line)] bg-[rgba(255,255,255,0.025)] px-6 py-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur"
         >
           <div className="max-w-3xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--accent-strong)]">
@@ -353,7 +353,7 @@ export default function Home() {
           </div>
         </motion.header>
 
-        <section className="mt-6 grid gap-6 xl:grid-cols-[1.28fr_0.72fr]">
+        <section className={`mt-6 grid gap-6 ${phase === 'idle' ? 'xl:grid-cols-1' : 'xl:grid-cols-[1.28fr_0.72fr]'}`}>
           <div className="rounded-[36px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur">
             <PromptInput
               onSubmit={handleSubmit}
@@ -368,7 +368,9 @@ export default function Home() {
             />
           </div>
 
-          <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
+          {phase !== 'idle' ? (
+            <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
+          ) : null}
         </section>
 
         <section className="mt-6">
