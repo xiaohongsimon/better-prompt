@@ -57,7 +57,7 @@ export interface OptimizedResult {
   strategySummary: string;
   keyUpgrades: string[];
   applicableScenarios: string[];
-  status?: 'pending' | 'done' | 'error';
+  status?: 'pending' | 'streaming' | 'done' | 'error';
   latencyMs?: number;
   completionRank?: number;
   rawText?: string;

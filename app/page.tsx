@@ -25,6 +25,7 @@ import {
 } from '@/types';
 
 const STORAGE_KEY = 'betterprompt_config_v4';
+const MODEL_TIMEOUT_MS = 20_000;
 
 const DEFAULT_CONFIG: ApiConfig = {
   baseUrl: BAILIAN_BASE_URL,
@@ -40,7 +41,6 @@ const DEFAULT_CONFIG: ApiConfig = {
 };
 
 type Phase = 'idle' | 'optimizing' | 'judging' | 'done';
-const MODEL_TIMEOUT_MS = 20_000;
 
 export default function Home() {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -56,13 +56,12 @@ export default function Home() {
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
   const [originalPrompt, setOriginalPrompt] = useState('');
-  const [completedModels, setCompletedModels] = useState(0);
   const [critiqueSeconds, setCritiqueSeconds] = useState(0);
   const [optimizeSeconds, setOptimizeSeconds] = useState(0);
   const [judgeSeconds, setJudgeSeconds] = useState(0);
-  const [optimizerCount, setOptimizerCount] = useState(DEFAULT_OPTIMIZER_MODEL_IDS.length);
   const startedAtRef = useRef<number | null>(null);
   const judgeStartedAtRef = useRef<number | null>(null);
+  const raceRankRef = useRef(0);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -85,7 +84,7 @@ export default function Home() {
       if (startedAtRef.current) {
         const elapsed = (now - startedAtRef.current) / 1000;
         setOptimizeSeconds(elapsed);
-        if (critiqueLoading && !critique) {
+        if (critiqueLoading) {
           setCritiqueSeconds(elapsed);
         }
       }
@@ -96,19 +95,7 @@ export default function Home() {
     }, 100);
 
     return () => window.clearInterval(timer);
-  }, [phase, critiqueLoading, critique]);
-
-  useEffect(() => {
-    if (critique) {
-      setCritiqueSeconds(optimizeSeconds);
-    }
-  }, [critique, optimizeSeconds]);
-
-  useEffect(() => {
-    if (phase === 'done' && judgeStartedAtRef.current) {
-      setJudgeSeconds((performance.now() - judgeStartedAtRef.current) / 1000);
-    }
-  }, [phase]);
+  }, [phase, critiqueLoading]);
 
   const handleSaveConfig = (nextConfig: ApiConfig) => {
     setConfig(nextConfig);
@@ -116,146 +103,113 @@ export default function Home() {
   };
 
   const handleSubmit = async (prompt: string) => {
-    const activeOptimizerModels = AVAILABLE_MODELS.filter((model) => model.role === 'optimizer').map(
-      (model) => model.id
-    );
+    const activeOptimizerModels = AVAILABLE_MODELS.filter((model) => model.role === 'optimizer');
 
     if (activeOptimizerModels.length === 0) {
       setError('请至少选择一个优化模型。');
       return;
     }
 
-    if (!config.judgeModel) {
-      setError('请配置裁判模型。');
-      return;
-    }
-
-    setOriginalPrompt(prompt);
     setError(null);
+    setOriginalPrompt(prompt);
     setCritique(null);
     setCritiqueLoading(true);
-    setResults([]);
     setRankings([]);
     setJudgeSummary('');
     setSynthesizedBestPrompt('');
     setSynthesisRationale('');
     setAppliedAdvantages([]);
-    setCompletedModels(0);
-    setOptimizerCount(activeOptimizerModels.length);
     setCritiqueSeconds(0);
     setOptimizeSeconds(0);
     setJudgeSeconds(0);
+    raceRankRef.current = 0;
     startedAtRef.current = performance.now();
     judgeStartedAtRef.current = null;
     setPhase('optimizing');
 
-    void (async () => {
-      try {
-        const critiqueRes = await fetch('/api/critique', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt, config }),
-        });
-        const critiqueData = (await critiqueRes.json()) as CritiqueResponse & { error?: string };
-        if (!critiqueRes.ok) {
-          throw new Error(critiqueData.error || 'Failed to critique prompt');
-        }
-        setCritique(critiqueData);
-      } catch {
-        setCritique(null);
-      } finally {
-        setCritiqueLoading(false);
-      }
-    })();
+    setResults(
+      activeOptimizerModels.map((model) => ({
+        model: model.id,
+        modelName: model.name,
+        provider: model.provider,
+        optimizedPrompt: '',
+        strategySummary: '',
+        keyUpgrades: [],
+        applicableScenarios: [],
+        status: 'pending',
+      }))
+    );
+
+    void runCritique(prompt, config, setCritique, setCritiqueLoading);
+
+    const settled = await Promise.allSettled(
+      activeOptimizerModels.map((model) =>
+        streamOptimizer({
+          modelId: model.id,
+          prompt,
+          config,
+          onDelta: (delta) => {
+            setResults((previous) =>
+              previous.map((item) =>
+                item.model === model.id
+                  ? {
+                      ...item,
+                      status: 'streaming',
+                      optimizedPrompt: `${item.optimizedPrompt}${delta}`,
+                    }
+                  : item
+              )
+            );
+          },
+          onDone: (result) => {
+            raceRankRef.current += 1;
+            setResults((previous) =>
+              previous.map((item) =>
+                item.model === model.id
+                  ? {
+                      ...item,
+                      ...result,
+                      status: 'done',
+                      completionRank: raceRankRef.current,
+                    }
+                  : item
+              )
+            );
+          },
+          onError: () => {
+            setResults((previous) =>
+              previous.map((item) =>
+                item.model === model.id
+                  ? {
+                      ...item,
+                      status: 'error',
+                      optimizedPrompt: '',
+                      error: '本轮未完成',
+                    }
+                  : item
+              )
+            );
+          },
+        })
+      )
+    );
+
+    const validCandidates = settled
+      .flatMap((item) => (item.status === 'fulfilled' ? [item.value] : []))
+      .filter((item) => item.optimizedPrompt && !item.error);
+
+    setResults((previous) => previous.filter((item) => item.status !== 'error' || item.optimizedPrompt));
+
+    if (validCandidates.length === 0) {
+      setError('本轮没有拿到可用候选，请重试。');
+      setPhase('idle');
+      return;
+    }
+
+    setPhase('judging');
+    judgeStartedAtRef.current = performance.now();
 
     try {
-      const settledResults = await Promise.all(
-        activeOptimizerModels.map(async (modelId) => {
-          const startedAt = performance.now();
-          const controller = new AbortController();
-          const timeout = window.setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
-
-          try {
-            const response = await fetch('/api/optimize-single', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ prompt, config, modelId }),
-              signal: controller.signal,
-            });
-
-            window.clearTimeout(timeout);
-            const payload = await parseJsonResponse<{ result?: OptimizedResult; error?: string }>(
-              response
-            );
-            const fallbackMeta = AVAILABLE_MODELS.find((model) => model.id === modelId);
-            const result =
-              payload.result ||
-              ({
-                model: modelId,
-                modelName: fallbackMeta?.name || modelId,
-                provider: fallbackMeta?.provider || 'Unknown',
-                optimizedPrompt: '',
-                strategySummary: '',
-                keyUpgrades: [],
-                applicableScenarios: [],
-                error: payload.error || '本轮未返回可用结果',
-                status: payload.error ? 'error' : 'done',
-                latencyMs: Math.round(performance.now() - startedAt),
-              } satisfies OptimizedResult);
-
-            const normalizedResult = {
-              ...result,
-              status: result.error ? 'error' : 'done',
-              latencyMs: Math.round(performance.now() - startedAt),
-            } satisfies OptimizedResult;
-
-            setCompletedModels((value) => value + 1);
-            if (!normalizedResult.error && normalizedResult.optimizedPrompt) {
-              setResults((previous) => [
-                ...previous,
-                {
-                  ...normalizedResult,
-                  completionRank: previous.length + 1,
-                },
-              ]);
-            }
-            return normalizedResult;
-          } catch (requestError) {
-            window.clearTimeout(timeout);
-            const isTimeout =
-              requestError instanceof DOMException && requestError.name === 'AbortError';
-            const fallbackMeta = AVAILABLE_MODELS.find((model) => model.id === modelId);
-            const result = {
-              model: modelId,
-              modelName: fallbackMeta?.name || modelId,
-              provider: fallbackMeta?.provider || 'Unknown',
-              optimizedPrompt: '',
-              strategySummary: '',
-              keyUpgrades: [],
-              applicableScenarios: [],
-              status: 'error',
-              latencyMs: Math.round(performance.now() - startedAt),
-              error: isTimeout ? 'timeout' : '本轮未返回可用结果',
-            } satisfies OptimizedResult;
-
-            setCompletedModels((value) => value + 1);
-            return result;
-          }
-        })
-      );
-
-      const validCandidates = settledResults.filter(
-        (result) => result.optimizedPrompt && !result.error
-      );
-
-      if (validCandidates.length === 0) {
-        throw new Error('本轮没有拿到可用候选，请重试。');
-      }
-
-      setPhase('judging');
-      judgeStartedAtRef.current = performance.now();
-      setJudgeSeconds(0);
-
       const proofRes = await fetch('/api/create-proof', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -264,9 +218,8 @@ export default function Home() {
           candidates: validCandidates,
         }),
       });
-      const proofData = await parseJsonResponse<{ submissionProof?: string; error?: string }>(
-        proofRes
-      );
+      const proofData = await parseJsonResponse<{ submissionProof?: string; error?: string }>(proofRes);
+
       if (!proofRes.ok || !proofData.submissionProof) {
         throw new Error(proofData.error || 'Failed to create proof');
       }
@@ -281,22 +234,21 @@ export default function Home() {
           submissionProof: proofData.submissionProof,
         }),
       });
-
       const judgeData = await parseJsonResponse<JudgeResponse & { error?: string }>(judgeRes);
+
       if (!judgeRes.ok) {
         throw new Error(judgeData.error || 'Failed to judge prompts');
       }
 
-      setRankings(judgeData.rankings);
+      setRankings(judgeData.rankings || []);
       setJudgeSummary(judgeData.judgeSummary || '');
       setSynthesizedBestPrompt(judgeData.synthesizedBestPrompt || '');
       setSynthesisRationale(judgeData.synthesisRationale || '');
       setAppliedAdvantages(judgeData.appliedAdvantages || []);
       setPhase('done');
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : '本轮处理失败，请重试。');
-      setPhase('idle');
-      setCritiqueLoading(false);
+    } catch {
+      setError('综合裁判暂时未完成，请稍后重试。');
+      setPhase('done');
     }
   };
 
@@ -311,19 +263,16 @@ export default function Home() {
     setAppliedAdvantages([]);
     setCritique(null);
     setCritiqueLoading(false);
-    setCompletedModels(0);
     setCritiqueSeconds(0);
     setOptimizeSeconds(0);
     setJudgeSeconds(0);
-    judgeStartedAtRef.current = null;
-    startedAtRef.current = null;
     setPhase('idle');
   };
 
   const bestRanking = rankings[0];
   const bestResult = bestRanking
     ? results.find((result) => result.model === bestRanking.model)
-    : undefined;
+    : results.find((result) => result.completionRank === 1);
 
   const handleCopyBest = async () => {
     const value = synthesizedBestPrompt || bestResult?.optimizedPrompt;
@@ -354,25 +303,27 @@ export default function Home() {
     URL.revokeObjectURL(url);
   };
 
+  const visibleResults = results.filter((item) => item.status !== 'error' || item.optimizedPrompt);
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[var(--page-bg)] text-[var(--ink-strong)]">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_26%),linear-gradient(180deg,#0b0d12_0%,#0f1218_100%)]" />
 
-      <div className="relative mx-auto max-w-[1480px] px-5 py-6 md:px-8 md:py-8">
+      <div className="relative mx-auto max-w-[1560px] px-5 py-6 md:px-8 md:py-8">
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-wrap items-start justify-between gap-4 rounded-[30px] border border-[var(--line)] bg-[rgba(255,255,255,0.025)] px-5 py-4 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur"
+          className="flex flex-wrap items-start justify-between gap-4 rounded-[28px] border border-[var(--line)] bg-[rgba(255,255,255,0.025)] px-6 py-5 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur"
         >
           <div className="max-w-3xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--accent-strong)]">
               BetterPrompt
             </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.03em] text-[var(--ink-strong)] md:text-[42px]">
+            <h1 className="mt-2 text-[54px] font-semibold tracking-[-0.04em] text-[var(--ink-strong)]">
               多模型提示词优化工作台
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--ink-soft)]">
-              多路优化、逐个返回、裁判综合定稿。
+            <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
+              四路竞速生成，边写边出，最后由 Kimi 融合定稿。
             </p>
           </div>
 
@@ -387,7 +338,7 @@ export default function Home() {
             </button>
             <button
               onClick={handleExportMarkdown}
-              disabled={results.length === 0}
+              disabled={visibleResults.length === 0}
               className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm text-[var(--ink-strong)] disabled:opacity-40"
             >
               <Download className="size-4" />
@@ -410,45 +361,47 @@ export default function Home() {
           </div>
         </motion.header>
 
-        <section className={`mt-6 grid gap-6 ${phase === 'idle' ? 'xl:grid-cols-1' : 'xl:grid-cols-[0.42fr_1.58fr]'}`}>
-          <div className="rounded-[36px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur">
-            <PromptInput
-              onSubmit={handleSubmit}
-              isLoading={phase === 'optimizing' || phase === 'judging'}
-              compact={phase !== 'idle'}
-              topSlot={
-                phase !== 'idle' ? (
-                  <ProgressRail
-                    critiqueLoading={critiqueLoading}
-                    critiqueReady={Boolean(critique)}
-                    completedModels={completedModels}
-                    totalModels={optimizerCount}
-                    judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
-                    critiqueSeconds={critiqueSeconds}
-                    optimizeSeconds={optimizeSeconds}
-                    judgeSeconds={judgeSeconds}
-                  />
-                ) : null
-              }
-            />
-          </div>
+        <section
+          className={`mt-8 ${phase === 'idle' ? 'mx-auto max-w-[860px]' : 'grid gap-8 xl:grid-cols-[380px_minmax(0,1fr)]'}`}
+        >
+          <aside className={phase === 'idle' ? '' : 'xl:sticky xl:top-8 xl:self-start'}>
+            <div className="rounded-[30px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur">
+              <PromptInput
+                onSubmit={handleSubmit}
+                isLoading={phase === 'optimizing' || phase === 'judging'}
+                compact={phase !== 'idle'}
+              />
+            </div>
+          </aside>
 
           {phase !== 'idle' ? (
             <div className="space-y-6">
+              <ProgressRail
+                results={results}
+                critiqueLoading={critiqueLoading}
+                critiqueReady={Boolean(critique)}
+                judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
+                critiqueSeconds={critiqueSeconds}
+                optimizeSeconds={optimizeSeconds}
+                judgeSeconds={judgeSeconds}
+              />
+
               {error ? (
                 <div className="rounded-[24px] border border-[rgba(180,58,38,0.22)] bg-[rgba(88,30,21,0.28)] px-5 py-4 text-sm leading-6 text-[rgb(244,171,157)]">
                   {error}
                 </div>
               ) : null}
+
               <RankingList
                 rankings={rankings}
-                results={results}
+                results={visibleResults}
                 judgeSummary={judgeSummary}
                 judgeStatus={phase === 'judging' ? 'running' : rankings.length > 0 ? 'done' : 'idle'}
                 synthesizedBestPrompt={synthesizedBestPrompt}
                 synthesisRationale={synthesisRationale}
                 appliedAdvantages={appliedAdvantages}
               />
+
               <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
             </div>
           ) : null}
@@ -463,6 +416,117 @@ export default function Home() {
       />
     </main>
   );
+}
+
+async function runCritique(
+  prompt: string,
+  config: ApiConfig,
+  setCritique: (value: CritiqueResponse | null) => void,
+  setCritiqueLoading: (value: boolean) => void
+) {
+  try {
+    const critiqueRes = await fetch('/api/critique', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, config }),
+    });
+    const critiqueData = await parseJsonResponse<CritiqueResponse & { error?: string }>(critiqueRes);
+
+    if (!critiqueRes.ok) {
+      throw new Error(critiqueData.error || 'Failed to critique prompt');
+    }
+
+    setCritique(critiqueData);
+  } catch {
+    setCritique(null);
+  } finally {
+    setCritiqueLoading(false);
+  }
+}
+
+async function streamOptimizer({
+  modelId,
+  prompt,
+  config,
+  onDelta,
+  onDone,
+  onError,
+}: {
+  modelId: string;
+  prompt: string;
+  config: ApiConfig;
+  onDelta: (delta: string) => void;
+  onDone: (result: OptimizedResult) => void;
+  onError: () => void;
+}) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
+
+  try {
+    const response = await fetch('/api/optimize-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, config, modelId }),
+      signal: controller.signal,
+    });
+
+    if (!response.ok || !response.body) {
+      throw new Error('stream unavailable');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalResult: OptimizedResult | null = null;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+
+        const payload = safeJsonParse(line);
+        if (!payload) continue;
+
+        if (payload.type === 'delta' && typeof payload.delta === 'string') {
+          onDelta(payload.delta);
+        }
+
+        if (payload.type === 'done' && payload.result) {
+          finalResult = payload.result as OptimizedResult;
+        }
+
+        if (payload.type === 'error') {
+          throw new Error('stream error');
+        }
+      }
+    }
+
+    if (!finalResult) {
+      throw new Error('stream incomplete');
+    }
+
+    onDone(finalResult);
+    return finalResult;
+  } catch {
+    onError();
+    throw new Error('stream failed');
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+function safeJsonParse(text: string) {
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
 }
 
 async function parseJsonResponse<T>(response: Response) {

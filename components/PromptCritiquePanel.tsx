@@ -15,7 +15,7 @@ export function PromptCritiquePanel({ loading, critique }: PromptCritiquePanelPr
 
   return (
     <aside
-      className={`rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.24)] ${
+      className={`rounded-[24px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.025)] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.18)] ${
         expanded ? 'min-h-[70vh]' : ''
       }`}
     >
@@ -31,7 +31,7 @@ export function PromptCritiquePanel({ loading, critique }: PromptCritiquePanelPr
           <h3 className="mt-3 text-lg font-semibold text-[var(--ink-strong)]">输入点评</h3>
 
           <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-            放在最后，供你回看原始提示词的问题与改法。
+            这部分放在最后，供你回看原始提示词的问题与改法。
           </p>
         </div>
 

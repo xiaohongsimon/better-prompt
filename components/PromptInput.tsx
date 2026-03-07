@@ -44,7 +44,7 @@ export function PromptInput({
           <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-[var(--accent-strong)]">
             Input
           </p>
-          <h2 className={`mt-3 font-semibold leading-tight text-[var(--ink-strong)] ${compact ? 'text-xl' : 'text-2xl'}`}>
+          <h2 className={`mt-3 font-semibold leading-tight text-[var(--ink-strong)] ${compact ? 'text-[28px]' : 'text-[34px]'}`}>
             输入原始提示词
           </h2>
         </div>
@@ -55,17 +55,17 @@ export function PromptInput({
 
       {topSlot}
 
-      <div className="rounded-[32px] border border-[var(--line)] bg-[rgba(255,255,255,0.04)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+      <div className="rounded-[30px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.035)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
         <Textarea
           placeholder="例如：我要让 AI 帮我写一份面向投资人的 SaaS 产品介绍，但我要它逻辑清楚、术语专业、结构完整，并能控制输出格式。"
           value={prompt}
           onChange={(event) => setPrompt(event.target.value)}
-          className={`rounded-[24px] border-0 bg-transparent px-4 py-4 text-[17px] leading-8 text-[var(--ink-strong)] placeholder:text-[rgba(242,238,230,0.28)] shadow-none focus-visible:ring-0 ${compact ? 'min-h-[132px]' : 'min-h-[168px]'}`}
+          className={`rounded-[24px] border-0 bg-transparent px-4 py-4 text-[16px] leading-8 text-[var(--ink-strong)] placeholder:text-[rgba(242,238,230,0.28)] shadow-none focus-visible:ring-0 ${compact ? 'min-h-[200px]' : 'min-h-[240px]'}`}
           disabled={isLoading}
         />
       </div>
 
-      <div className={`flex flex-wrap gap-2 ${compact ? 'max-w-3xl' : ''}`}>
+      <div className={`flex flex-wrap gap-2 ${compact ? 'max-w-none' : ''}`}>
         {EXAMPLES.map((example) => (
           <button
             key={example}
@@ -79,16 +79,16 @@ export function PromptInput({
         ))}
       </div>
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div className="flex flex-col gap-4">
         <div className="max-w-2xl space-y-2">
           <p className="text-sm leading-6 text-[var(--ink-soft)]">
-            四个模型并发优化，全部返回后由 Kimi 进行排序与综合改写。
+            四路模型同时开跑，谁先产出谁先出现，最后再由裁判融合成定稿。
           </p>
         </div>
         <Button
           onClick={handleSubmit}
           disabled={!prompt.trim() || isLoading || submitDisabled}
-          className="h-14 rounded-full bg-[var(--accent)] px-6 text-[15px] font-semibold text-[var(--accent-foreground)] hover:bg-[var(--accent-strong)]"
+          className="h-14 w-full rounded-full bg-[var(--accent)] px-6 text-[15px] font-semibold text-[var(--accent-foreground)] hover:bg-[var(--accent-strong)]"
         >
           {isLoading ? (
             <>

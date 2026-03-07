@@ -21,11 +21,13 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
 
   const previewText =
     optimized.status === 'pending'
-      ? '正在生成中，结果会在该模型完成后自动出现。'
+      ? '等待该模型开始生成。'
       : optimized.optimizedPrompt || optimized.error || '等待返回';
   const statusLabel =
     optimized.status === 'pending'
-      ? 'Running'
+      ? 'Queued'
+      : optimized.status === 'streaming'
+        ? 'Streaming'
       : optimized.status === 'error'
         ? 'Failed'
         : result?.rank
@@ -41,7 +43,7 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
         result?.rank === 1
           ? 'border-[rgba(208,138,77,0.28)] bg-[linear-gradient(180deg,rgba(31,26,22,0.96),rgba(19,22,28,0.96))]'
           : 'border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]'
-      } ${expanded ? 'min-h-[68vh]' : 'h-[330px]'}`}
+      } ${expanded ? 'min-h-[68vh]' : 'h-[360px]'}`}
     >
       <div className="border-b border-white/5 px-5 py-4">
         <div className="flex items-start justify-between gap-3">
@@ -56,6 +58,8 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
                 className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] ${
                   optimized.status === 'pending'
                     ? 'bg-[rgba(80,116,255,0.18)] text-[rgb(174,198,255)]'
+                    : optimized.status === 'streaming'
+                      ? 'bg-[rgba(80,116,255,0.24)] text-[rgb(200,215,255)]'
                     : optimized.status === 'error'
                       ? 'bg-[rgba(180,58,38,0.2)] text-[rgb(244,171,157)]'
                       : 'bg-[rgba(214,185,139,0.18)] text-[var(--accent-strong)]'
@@ -99,6 +103,7 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
       <div className={`flex-1 overflow-y-auto px-5 py-4 ${expanded ? 'min-h-[42vh]' : ''}`}>
         <p className="whitespace-pre-wrap text-[14px] leading-7 text-[var(--ink-strong)]">
           {previewText}
+          {optimized.status === 'streaming' ? <span className="ml-1 inline-block h-5 w-2 animate-pulse rounded-sm bg-[var(--accent)] align-middle" /> : null}
         </p>
       </div>
 

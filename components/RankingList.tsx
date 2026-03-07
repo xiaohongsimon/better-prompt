@@ -35,7 +35,7 @@ export function RankingList({
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
+      <div className="grid gap-5 xl:grid-cols-2">
         {results.length > 0 ? results.map((optimized, index) => (
           <OptimizedCard
             key={optimized.model}
@@ -44,7 +44,7 @@ export function RankingList({
             index={index}
           />
         )) : (
-          <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-5 py-8 text-sm leading-7 text-[var(--ink-soft)]">
+          <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-5 py-8 text-sm leading-7 text-[var(--ink-soft)] xl:col-span-2">
             正在等待首个模型完成，结果会按返回顺序插入这里。
           </div>
         )}
@@ -62,7 +62,7 @@ export function RankingList({
             <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--accent-strong)]">
               Judge / Kimi 2.5
             </p>
-            <h3 className="mt-2 text-2xl font-semibold text-[var(--ink-strong)]">
+            <h3 className="mt-2 text-[32px] font-semibold tracking-[-0.03em] text-[var(--ink-strong)]">
               {judgeStatus === 'done'
                 ? '综合最佳版本'
                 : judgeStatus === 'running'
@@ -99,7 +99,7 @@ export function RankingList({
           </button>
         </div>
 
-        <div className="mt-5 space-y-5">
+        <div className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <div className="rounded-[28px] bg-[rgba(255,255,255,0.04)] px-5 py-5">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent-strong)]">
               Synthesized Prompt
