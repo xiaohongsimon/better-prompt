@@ -39,10 +39,13 @@ const DEFAULT_CONFIG: ApiConfig = {
 };
 
 type Phase = 'idle' | 'optimizing' | 'judging' | 'done';
+type SynthesisStage = 'idle' | 'drafting' | 'draft_ready' | 'upgrading' | 'final';
 
 export default function Home() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [synthesisStatus, setSynthesisStatus] = useState<'idle' | 'running' | 'done'>('idle');
+  const [synthesisStage, setSynthesisStage] = useState<SynthesisStage>('idle');
+  const [synthesisCandidateCount, setSynthesisCandidateCount] = useState(0);
   const [results, setResults] = useState<OptimizedResult[]>([]);
   const [rankings, setRankings] = useState<JudgeResult[]>([]);
   const [judgeSummary, setJudgeSummary] = useState('');
@@ -120,6 +123,8 @@ export default function Home() {
     setOptimizeSeconds(0);
     setJudgeSeconds(0);
     setSynthesisStatus('idle');
+    setSynthesisStage('idle');
+    setSynthesisCandidateCount(0);
     raceRankRef.current = 0;
     judgeTriggeredRef.current = false;
     synthesizedCandidateCountRef.current = 0;
@@ -246,6 +251,8 @@ export default function Home() {
     setOptimizeSeconds(0);
     setJudgeSeconds(0);
     setSynthesisStatus('idle');
+    setSynthesisStage('idle');
+    setSynthesisCandidateCount(0);
     startedAtRef.current = null;
     judgeStartedAtRef.current = null;
     judgeTriggeredRef.current = false;
@@ -269,6 +276,12 @@ export default function Home() {
       }
       setPhase('judging');
       setSynthesisStatus('running');
+      setSynthesisStage('drafting');
+      setJudgeSeconds(0);
+      judgeStartedAtRef.current = performance.now();
+    } else if (mode === 'refresh' && candidates.length > synthesizedCandidateCountRef.current) {
+      setSynthesisStatus('running');
+      setSynthesisStage('upgrading');
       setJudgeSeconds(0);
       judgeStartedAtRef.current = performance.now();
     }
@@ -311,6 +324,7 @@ export default function Home() {
         synthesizedCandidateCountRef.current,
         candidates.length
       );
+      setSynthesisCandidateCount(candidates.length);
 
       if (mode === 'initial') {
         if (judgeStartedAtRef.current) {
@@ -318,7 +332,15 @@ export default function Home() {
         }
         judgeStartedAtRef.current = null;
         setSynthesisStatus('done');
+        setSynthesisStage('draft_ready');
         setPhase('done');
+      } else {
+        if (judgeStartedAtRef.current) {
+          setJudgeSeconds((performance.now() - judgeStartedAtRef.current) / 1000);
+        }
+        judgeStartedAtRef.current = null;
+        setSynthesisStatus('done');
+        setSynthesisStage('final');
       }
 
       void runPostAnalysis({
@@ -338,6 +360,7 @@ export default function Home() {
         }
         judgeStartedAtRef.current = null;
         setSynthesisStatus('idle');
+        setSynthesisStage('idle');
         setError('综合裁判暂时未完成，请稍后重试。');
         setPhase('done');
       }
@@ -504,6 +527,9 @@ export default function Home() {
                 appliedAdvantages={appliedAdvantages}
                 nowMs={nowMs}
                 judgeSeconds={judgeSeconds}
+                synthesisStage={synthesisStage}
+                synthesisCandidateCount={synthesisCandidateCount}
+                totalCandidateCount={visibleResults.filter((item) => item.status !== 'error').length}
               />
 
             </div>

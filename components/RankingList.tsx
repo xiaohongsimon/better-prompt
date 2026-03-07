@@ -12,6 +12,9 @@ interface RankingListProps {
   judgeSummary: string;
   judgeStatus: 'idle' | 'running' | 'done';
   judgeSeconds: number;
+  synthesisStage: 'idle' | 'drafting' | 'draft_ready' | 'upgrading' | 'final';
+  synthesisCandidateCount: number;
+  totalCandidateCount: number;
   synthesizedBestPrompt: string;
   synthesisRationale: string;
   appliedAdvantages: string[];
@@ -24,6 +27,9 @@ export function RankingList({
   judgeSummary,
   judgeStatus,
   judgeSeconds,
+  synthesisStage,
+  synthesisCandidateCount,
+  totalCandidateCount,
   synthesizedBestPrompt,
   synthesisRationale,
   appliedAdvantages,
@@ -42,6 +48,13 @@ export function RankingList({
     if (!synthesizedBestPrompt) return;
     await navigator.clipboard.writeText(synthesizedBestPrompt);
   };
+
+  const synthesisHint = getSynthesisHint({
+    judgeStatus,
+    synthesisStage,
+    synthesisCandidateCount,
+    totalCandidateCount,
+  });
 
   return (
     <div className="space-y-6">
@@ -70,6 +83,12 @@ export function RankingList({
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(214,185,139,0.18)] bg-[rgba(214,185,139,0.08)] px-3 py-2 text-sm text-[var(--accent-strong)]">
                   <span className="size-2 rounded-full bg-[var(--accent)] animate-pulse" />
                   正在定稿 · {formatSeconds(judgeSeconds)}
+                </div>
+              ) : null}
+              {synthesisHint ? (
+                <div className="mt-4 rounded-2xl border border-[rgba(214,185,139,0.14)] bg-[rgba(214,185,139,0.06)] px-4 py-3 text-sm leading-6 text-[var(--ink-strong)]">
+                  <div className="font-medium text-[var(--accent-strong)]">{synthesisHint.title}</div>
+                  <div className="mt-1 text-[var(--ink-soft)]">{synthesisHint.description}</div>
                 </div>
               ) : null}
             </div>
@@ -190,4 +209,54 @@ export function RankingList({
 
 function formatSeconds(value: number) {
   return `${(value * 0.7).toFixed(1)} 秒`;
+}
+
+function getSynthesisHint({
+  judgeStatus,
+  synthesisStage,
+  synthesisCandidateCount,
+  totalCandidateCount,
+}: {
+  judgeStatus: 'idle' | 'running' | 'done';
+  synthesisStage: 'idle' | 'drafting' | 'draft_ready' | 'upgrading' | 'final';
+  synthesisCandidateCount: number;
+  totalCandidateCount: number;
+}) {
+  const remaining = Math.max(totalCandidateCount - synthesisCandidateCount, 0);
+
+  if (judgeStatus === 'running' && synthesisStage === 'drafting') {
+    return {
+      title: `已基于前 ${synthesisCandidateCount || 2} 路候选提前启动首版定稿`,
+      description:
+        remaining > 0
+          ? `剩余 ${remaining} 路返回后，会继续自动补强，不会打断你先看首版。`
+          : '当前候选已经足够，正在尽快收束成第一版综合稿。',
+    };
+  }
+
+  if (judgeStatus === 'done' && synthesisStage === 'draft_ready') {
+    return {
+      title: `首版综合稿已生成，当前纳入 ${synthesisCandidateCount} 路候选`,
+      description:
+        remaining > 0
+          ? `其余 ${remaining} 路如果稍后完成，系统会自动升级这份综合稿。`
+          : '当前已经拿到全部候选，这份综合稿可以直接使用。',
+    };
+  }
+
+  if (judgeStatus === 'running' && synthesisStage === 'upgrading') {
+    return {
+      title: `新候选已补齐，正在升级为更完整的终版`,
+      description: `本次会把新增返回的 ${remaining === 0 ? '剩余候选' : `${remaining} 路`} 优点一起纳入。`,
+    };
+  }
+
+  if (judgeStatus === 'done' && synthesisStage === 'final') {
+    return {
+      title: `综合稿已升级为终版，共纳入 ${synthesisCandidateCount} 路候选`,
+      description: '后到的模型优点已经合并进来，当前这版是更完整的最终结果。',
+    };
+  }
+
+  return null;
 }
