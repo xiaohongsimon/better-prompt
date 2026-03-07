@@ -63,6 +63,8 @@ export default function Home() {
   const startedAtRef = useRef<number | null>(null);
   const judgeStartedAtRef = useRef<number | null>(null);
   const raceRankRef = useRef(0);
+  const judgeTriggeredRef = useRef(false);
+  const workbenchRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -125,9 +127,13 @@ export default function Home() {
     setOptimizeSeconds(0);
     setJudgeSeconds(0);
     raceRankRef.current = 0;
+    judgeTriggeredRef.current = false;
     startedAtRef.current = performance.now();
     judgeStartedAtRef.current = null;
     setPhase('optimizing');
+    requestAnimationFrame(() => {
+      workbenchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
 
     setResults(
       activeOptimizerModels.map((model) => ({
@@ -214,49 +220,8 @@ export default function Home() {
       return;
     }
 
-    setPhase('judging');
-    judgeStartedAtRef.current = performance.now();
-
-    try {
-      const proofRes = await fetch('/api/create-proof', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          originalPrompt: prompt,
-          candidates: validCandidates,
-        }),
-      });
-      const proofData = await parseJsonResponse<{ submissionProof?: string; error?: string }>(proofRes);
-
-      if (!proofRes.ok || !proofData.submissionProof) {
-        throw new Error(proofData.error || 'Failed to create proof');
-      }
-
-      const judgeRes = await fetch('/api/judge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          originalPrompt: prompt,
-          candidates: validCandidates,
-          config,
-          submissionProof: proofData.submissionProof,
-        }),
-      });
-      const judgeData = await parseJsonResponse<JudgeResponse & { error?: string }>(judgeRes);
-
-      if (!judgeRes.ok) {
-        throw new Error(judgeData.error || 'Failed to judge prompts');
-      }
-
-      setRankings(judgeData.rankings || []);
-      setJudgeSummary(judgeData.judgeSummary || '');
-      setSynthesizedBestPrompt(judgeData.synthesizedBestPrompt || '');
-      setSynthesisRationale(judgeData.synthesisRationale || '');
-      setAppliedAdvantages(judgeData.appliedAdvantages || []);
-      setPhase('done');
-    } catch {
-      setError('综合裁判暂时未完成，请稍后重试。');
-      setPhase('done');
+    if (!judgeTriggeredRef.current) {
+      void triggerJudge(prompt, validCandidates);
     }
   };
 
@@ -274,7 +239,80 @@ export default function Home() {
     setCritiqueSeconds(0);
     setOptimizeSeconds(0);
     setJudgeSeconds(0);
+    startedAtRef.current = null;
+    judgeStartedAtRef.current = null;
+    judgeTriggeredRef.current = false;
     setPhase('idle');
+  };
+
+  const triggerJudge = async (prompt: string, candidates: OptimizedResult[]) => {
+    if (judgeTriggeredRef.current || candidates.length === 0) return;
+
+    judgeTriggeredRef.current = true;
+    if (startedAtRef.current) {
+      setOptimizeSeconds((performance.now() - startedAtRef.current) / 1000);
+      startedAtRef.current = null;
+    }
+
+    setPhase('judging');
+    judgeStartedAtRef.current = performance.now();
+
+    try {
+      const proofRes = await fetch('/api/create-proof', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalPrompt: prompt,
+          candidates,
+        }),
+      });
+      const proofData = await parseJsonResponse<{ submissionProof?: string; error?: string }>(proofRes);
+
+      if (!proofRes.ok || !proofData.submissionProof) {
+        throw new Error(proofData.error || 'Failed to create proof');
+      }
+
+      const judgeRes = await fetch('/api/judge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalPrompt: prompt,
+          candidates,
+          config,
+          submissionProof: proofData.submissionProof,
+        }),
+      });
+      const judgeData = await parseJsonResponse<JudgeResponse & { error?: string }>(judgeRes);
+
+      if (!judgeRes.ok) {
+        throw new Error(judgeData.error || 'Failed to judge prompts');
+      }
+
+      setRankings(judgeData.rankings || []);
+      setJudgeSummary(judgeData.judgeSummary || '');
+      setSynthesizedBestPrompt(judgeData.synthesizedBestPrompt || '');
+      setSynthesisRationale(judgeData.synthesisRationale || '');
+      setAppliedAdvantages(judgeData.appliedAdvantages || []);
+      if (judgeStartedAtRef.current) {
+        setJudgeSeconds((performance.now() - judgeStartedAtRef.current) / 1000);
+      }
+      judgeStartedAtRef.current = null;
+      setPhase('done');
+    } catch {
+      judgeStartedAtRef.current = null;
+      setError('综合裁判暂时未完成，请稍后重试。');
+      setPhase('done');
+    }
+  };
+
+  const handleFinalizeEarly = () => {
+    const readyCandidates = results.filter(
+      (item) => item.status === 'done' && item.optimizedPrompt && !item.error
+    );
+
+    if (readyCandidates.length >= 2) {
+      void triggerJudge(originalPrompt, readyCandidates);
+    }
   };
 
   const bestRanking = rankings[0];
@@ -386,6 +424,7 @@ export default function Home() {
         ) : null}
 
         <section
+          ref={workbenchRef}
           className={`mt-6 ${phase === 'idle' ? 'mx-auto max-w-[860px]' : 'grid gap-8 xl:grid-cols-[380px_minmax(0,1fr)] items-start'}`}
         >
           <aside className={phase === 'idle' ? '' : 'xl:sticky xl:top-8 xl:self-start'}>
@@ -403,6 +442,19 @@ export default function Home() {
               {error ? (
                 <div className="rounded-[24px] border border-[rgba(180,58,38,0.22)] bg-[rgba(88,30,21,0.28)] px-5 py-4 text-sm leading-6 text-[rgb(244,171,157)]">
                   {error}
+                </div>
+              ) : null}
+
+              {phase === 'optimizing' && results.filter((item) => item.status === 'done').length >= 2 ? (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleFinalizeEarly}
+                    disabled={judgeTriggeredRef.current}
+                    className="inline-flex items-center gap-2 rounded-full border border-[rgba(214,185,139,0.24)] bg-[rgba(214,185,139,0.12)] px-4 py-2 text-sm text-[var(--accent-strong)] disabled:opacity-40"
+                  >
+                    用当前结果提前定稿
+                  </button>
                 </div>
               ) : null}
 

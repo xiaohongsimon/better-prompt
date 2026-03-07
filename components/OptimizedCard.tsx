@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ChevronDown, Copy, Expand, Minimize2 } from 'lucide-react';
+import { Copy, Expand, Minimize2 } from 'lucide-react';
 import type { JudgeResult, OptimizedResult } from '@/types';
 
 interface OptimizedCardProps {
@@ -154,25 +154,6 @@ export function OptimizedCard({ optimized, result, index, nowMs }: OptimizedCard
             {optimized.status === 'streaming' ? <span className="ml-1 inline-block h-5 w-2 animate-pulse rounded-sm bg-[var(--accent)] align-middle" /> : null}
           </p>
         )}
-      </div>
-
-      <div className="px-5 pb-5">
-        <details
-          className="group rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
-          open={false}
-        >
-          <summary className="flex cursor-pointer list-none items-center justify-between text-sm text-[var(--ink-strong)]">
-            查看细节
-            <ChevronDown className="size-4 transition group-open:rotate-180" />
-          </summary>
-          <div className="mt-3 space-y-3 text-sm leading-6 text-[var(--ink-soft)]">
-            <div>{result?.verdict || optimized.strategySummary || '暂无'}</div>
-            {result?.score ? <div>评分：{result.score} / 100</div> : null}
-            {result?.strengths?.length ? <div>优势：{result.strengths.join('；')}</div> : null}
-            {result?.improvementFocus?.length ? <div>改进：{result.improvementFocus.join('；')}</div> : null}
-            {optimized.keyUpgrades.length > 0 ? <div>升级点：{optimized.keyUpgrades.join('；')}</div> : null}
-          </div>
-        </details>
       </div>
     </motion.article>
   );
