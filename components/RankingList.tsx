@@ -37,11 +37,14 @@ export function RankingList({
 }: RankingListProps) {
   const [expanded, setExpanded] = useState(false);
   const rankingMap = new Map(rankings.map((ranking) => [ranking.model, ranking]));
+  const synthesisBodyRef = useRef<HTMLDivElement | null>(null);
   const synthesisTailRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     if (judgeStatus !== 'running') return;
-    synthesisTailRef.current?.scrollIntoView({ block: 'end' });
+    const body = synthesisBodyRef.current;
+    if (!body) return;
+    body.scrollTop = body.scrollHeight;
   }, [judgeStatus, synthesizedBestPrompt]);
 
   const handleCopySynthesis = async () => {
@@ -122,7 +125,10 @@ export function RankingList({
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent-strong)]">
                 Synthesized Prompt
               </p>
-              <div className={`mt-3 overflow-y-auto pr-1 ${expanded ? 'max-h-[48vh]' : 'max-h-[320px]'}`}>
+              <div
+                ref={synthesisBodyRef}
+                className={`mt-3 overflow-y-auto pr-1 ${expanded ? 'max-h-[48vh]' : 'max-h-[320px]'}`}
+              >
                 <p className="whitespace-pre-wrap text-[15px] leading-8 text-[var(--ink-strong)]">
                   {synthesizedBestPrompt || '正在整合四个候选的优点并实时生成综合稿…'}
                   {judgeStatus === 'running' ? (

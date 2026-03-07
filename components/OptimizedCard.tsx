@@ -14,7 +14,7 @@ interface OptimizedCardProps {
 
 export function OptimizedCard({ optimized, result, index, nowMs }: OptimizedCardProps) {
   const [expanded, setExpanded] = useState(false);
-  const isWorking = optimized.status === 'pending' || optimized.status === 'streaming';
+  const bodyRef = useRef<HTMLDivElement | null>(null);
   const tailRef = useRef<HTMLSpanElement | null>(null);
 
   const handleCopy = async () => {
@@ -48,23 +48,17 @@ export function OptimizedCard({ optimized, result, index, nowMs }: OptimizedCard
 
   useEffect(() => {
     if (optimized.status !== 'streaming') return;
-    tailRef.current?.scrollIntoView({ block: 'end' });
+    const body = bodyRef.current;
+    if (!body) return;
+    body.scrollTop = body.scrollHeight;
   }, [optimized.optimizedPrompt, optimized.status]);
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 20 }}
-      animate={{
-        opacity: 1,
-        y: isWorking ? [0, -4, 0] : 0,
-      }}
+      animate={{ opacity: 1, y: 0 }}
       transition={{
         delay: index * 0.05,
-        y: {
-          duration: 2.4 + index * 0.2,
-          repeat: isWorking ? Number.POSITIVE_INFINITY : 0,
-          ease: 'easeInOut',
-        },
       }}
       className={`flex flex-col overflow-hidden rounded-[28px] border shadow-[0_22px_70px_rgba(24,36,58,0.07)] ${
         result?.rank === 1
@@ -143,7 +137,7 @@ export function OptimizedCard({ optimized, result, index, nowMs }: OptimizedCard
         </div>
       </div>
 
-      <div className={`flex-1 overflow-y-auto px-5 py-4 ${expanded ? 'min-h-[42vh]' : ''}`}>
+      <div ref={bodyRef} className={`flex-1 overflow-y-auto px-5 py-4 ${expanded ? 'min-h-[42vh]' : ''}`}>
         {optimized.status === 'pending' ? (
           <div className="space-y-3">
             <div className="h-4 w-[68%] rounded-full bg-[rgba(255,255,255,0.08)]" />
