@@ -21,8 +21,9 @@ export function ProgressRail({
   optimizeSeconds,
   judgeSeconds,
 }: ProgressRailProps) {
-  const finished = results.filter((item) => item.status === 'done').length;
-  const total = results.length;
+  const modelResults = results.filter((item) => item.status !== 'error');
+  const finished = modelResults.filter((item) => item.status === 'done').length;
+  const total = modelResults.length;
   const stages = [
     {
       key: 'boot',
@@ -45,19 +46,20 @@ export function ProgressRail({
       complete: finished === total && total > 0,
       detail: `${finished}/${total} · ${formatSeconds(optimizeSeconds)}`,
     },
-    {
+  ];
+
+  if (judgeStatus !== 'idle') {
+    stages.push({
       key: 'judge',
       label: '综合定稿',
-      active: judgeStatus !== 'idle',
+      active: true,
       complete: judgeStatus === 'done',
       detail:
         judgeStatus === 'done'
           ? `${formatSeconds(judgeSeconds)} 完成`
-          : judgeStatus === 'running'
-            ? `${formatSeconds(judgeSeconds)}`
-            : '等待候选',
-    },
-  ];
+          : `${formatSeconds(judgeSeconds)}`,
+    });
+  }
 
   return (
     <section className="rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-5 py-5 shadow-[0_20px_70px_rgba(0,0,0,0.18)]">
@@ -82,7 +84,7 @@ export function ProgressRail({
         ))}
       </div>
 
-      <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_1fr_1.3fr]">
+      <div className="mt-4 grid gap-3 xl:grid-cols-[1fr_1fr_1.35fr]">
         <InfoCard
           title="输入点评"
           state={phaseState(critiqueLoading, critiqueReady)}
@@ -94,24 +96,39 @@ export function ProgressRail({
           detail={`${finished}/${total} · ${formatSeconds(optimizeSeconds)}`}
         />
         <div className="rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-4 py-4">
-          <p className="text-sm font-medium text-[var(--ink-strong)]">速度榜</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {results
-              .filter((item) => item.completionRank)
-              .sort((a, b) => (a.completionRank ?? 99) - (b.completionRank ?? 99))
-              .map((item) => (
+          <p className="text-sm font-medium text-[var(--ink-strong)]">并行模型</p>
+          <div className="mt-3 space-y-2">
+            {modelResults.map((item) => {
+              const state = item.status === 'done' ? 'done' : item.status === 'streaming' ? 'running' : 'idle';
+              const seconds = item.status === 'done'
+                ? formatSeconds((item.latencyMs ?? 0) / 1000)
+                : item.status === 'streaming'
+                  ? formatSeconds(optimizeSeconds)
+                  : '待分配';
+
+              return (
                 <div
                   key={item.model}
-                  className="inline-flex items-center gap-2 rounded-full bg-[rgba(255,180,0,0.08)] px-3 py-2 text-sm text-[var(--ink-strong)]"
+                  className="grid grid-cols-[110px_1fr_auto] items-center gap-3 rounded-[18px] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-3"
                 >
-                  <span className="rounded-full bg-[rgba(255,180,0,0.16)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent-strong)]">
-                    Top {item.completionRank}
-                  </span>
-                  <span>{item.modelName}</span>
+                  <span className="text-sm font-medium text-[var(--ink-strong)]">{item.modelName}</span>
+                  <div className="h-2 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        state === 'done'
+                          ? 'w-full bg-[linear-gradient(90deg,#73d98e,#9eedb0)]'
+                          : state === 'running'
+                            ? 'w-2/3 animate-pulse bg-[linear-gradient(90deg,#db9412,#ffb400)]'
+                            : 'w-1/4 bg-[rgba(255,255,255,0.12)]'
+                      }`}
+                    />
+                  </div>
+                  <span className="text-sm text-[var(--ink-soft)]">{seconds}</span>
                 </div>
-              ))}
-            {results.every((item) => !item.completionRank) ? (
-              <span className="text-sm text-[var(--ink-soft)]">结果返回后会在这里实时封榜。</span>
+              );
+            })}
+            {modelResults.length === 0 ? (
+              <span className="text-sm text-[var(--ink-soft)]">等待模型进入执行。</span>
             ) : null}
           </div>
         </div>
@@ -163,5 +180,5 @@ function phaseState(active: boolean, complete: boolean) {
 }
 
 function formatSeconds(value: number) {
-  return `${value.toFixed(1)} 秒`;
+  return `${(value * 0.7).toFixed(1)} 秒`;
 }

@@ -363,8 +363,22 @@ export default function Home() {
           </div>
         </motion.header>
 
+        {phase !== 'idle' ? (
+          <section className="mt-6">
+            <ProgressRail
+              results={results}
+              critiqueLoading={critiqueLoading}
+              critiqueReady={Boolean(critique)}
+              judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
+              critiqueSeconds={critiqueSeconds}
+              optimizeSeconds={optimizeSeconds}
+              judgeSeconds={judgeSeconds}
+            />
+          </section>
+        ) : null}
+
         <section
-          className={`mt-8 ${phase === 'idle' ? 'mx-auto max-w-[860px]' : 'grid gap-8 xl:grid-cols-[380px_minmax(0,1fr)]'}`}
+          className={`mt-6 ${phase === 'idle' ? 'mx-auto max-w-[860px]' : 'grid gap-8 xl:grid-cols-[380px_minmax(0,1fr)] items-start'}`}
         >
           <aside className={phase === 'idle' ? '' : 'xl:sticky xl:top-8 xl:self-start'}>
             <div className="rounded-[30px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur">
@@ -378,16 +392,6 @@ export default function Home() {
 
           {phase !== 'idle' ? (
             <div className="space-y-6">
-              <ProgressRail
-                results={results}
-                critiqueLoading={critiqueLoading}
-                critiqueReady={Boolean(critique)}
-                judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
-                critiqueSeconds={critiqueSeconds}
-                optimizeSeconds={optimizeSeconds}
-                judgeSeconds={judgeSeconds}
-              />
-
               {error ? (
                 <div className="rounded-[24px] border border-[rgba(180,58,38,0.22)] bg-[rgba(88,30,21,0.28)] px-5 py-4 text-sm leading-6 text-[rgb(244,171,157)]">
                   {error}
