@@ -5,12 +5,14 @@ interface ProgressRailProps {
   results: OptimizedResult[];
   judgeStatus: 'idle' | 'running' | 'done';
   optimizeSeconds: number;
+  judgeSeconds: number;
 }
 
 export function ProgressRail({
   results,
   judgeStatus,
   optimizeSeconds,
+  judgeSeconds,
 }: ProgressRailProps) {
   const modelResults = results.filter((item) => item.status !== 'error');
   const finished = modelResults.filter((item) => item.status === 'done').length;
@@ -71,7 +73,9 @@ export function ProgressRail({
       </div>
 
       <div className="mt-4 text-sm text-[var(--ink-soft)]">
-        已完成 {finished}/{total} 路候选，当前竞速计时 {formatSeconds(optimizeSeconds)}。
+        {judgeStatus === 'running'
+          ? `已完成 ${finished}/${total} 路候选，当前定稿计时 ${formatSeconds(judgeSeconds)}。`
+          : `已完成 ${finished}/${total} 路候选，当前竞速计时 ${formatSeconds(optimizeSeconds)}。`}
       </div>
     </section>
   );

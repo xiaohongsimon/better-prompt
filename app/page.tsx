@@ -42,6 +42,7 @@ type Phase = 'idle' | 'optimizing' | 'judging' | 'done';
 
 export default function Home() {
   const [phase, setPhase] = useState<Phase>('idle');
+  const [synthesisStatus, setSynthesisStatus] = useState<'idle' | 'running' | 'done'>('idle');
   const [results, setResults] = useState<OptimizedResult[]>([]);
   const [rankings, setRankings] = useState<JudgeResult[]>([]);
   const [judgeSummary, setJudgeSummary] = useState('');
@@ -53,6 +54,7 @@ export default function Home() {
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
   const [originalPrompt, setOriginalPrompt] = useState('');
   const [optimizeSeconds, setOptimizeSeconds] = useState(0);
+  const [judgeSeconds, setJudgeSeconds] = useState(0);
   const [nowMs, setNowMs] = useState(0);
   const startedAtRef = useRef<number | null>(null);
   const judgeStartedAtRef = useRef<number | null>(null);
@@ -85,6 +87,11 @@ export default function Home() {
         const elapsed = (now - startedAtRef.current) / 1000;
         setOptimizeSeconds(elapsed);
       }
+
+      if (judgeStartedAtRef.current) {
+        const elapsed = (now - judgeStartedAtRef.current) / 1000;
+        setJudgeSeconds(elapsed);
+      }
     }, 100);
 
     return () => window.clearInterval(timer);
@@ -111,6 +118,8 @@ export default function Home() {
     setSynthesisRationale('');
     setAppliedAdvantages([]);
     setOptimizeSeconds(0);
+    setJudgeSeconds(0);
+    setSynthesisStatus('idle');
     raceRankRef.current = 0;
     judgeTriggeredRef.current = false;
     synthesizedCandidateCountRef.current = 0;
@@ -235,6 +244,8 @@ export default function Home() {
     setSynthesisRationale('');
     setAppliedAdvantages([]);
     setOptimizeSeconds(0);
+    setJudgeSeconds(0);
+    setSynthesisStatus('idle');
     startedAtRef.current = null;
     judgeStartedAtRef.current = null;
     judgeTriggeredRef.current = false;
@@ -257,6 +268,8 @@ export default function Home() {
         startedAtRef.current = null;
       }
       setPhase('judging');
+      setSynthesisStatus('running');
+      setJudgeSeconds(0);
       judgeStartedAtRef.current = performance.now();
     }
 
@@ -300,7 +313,11 @@ export default function Home() {
       );
 
       if (mode === 'initial') {
+        if (judgeStartedAtRef.current) {
+          setJudgeSeconds((performance.now() - judgeStartedAtRef.current) / 1000);
+        }
         judgeStartedAtRef.current = null;
+        setSynthesisStatus('done');
         setPhase('done');
       }
 
@@ -316,7 +333,11 @@ export default function Home() {
       });
     } catch {
       if (mode === 'initial') {
+        if (judgeStartedAtRef.current) {
+          setJudgeSeconds((performance.now() - judgeStartedAtRef.current) / 1000);
+        }
         judgeStartedAtRef.current = null;
+        setSynthesisStatus('idle');
         setError('综合裁判暂时未完成，请稍后重试。');
         setPhase('done');
       }
@@ -431,8 +452,9 @@ export default function Home() {
           <section ref={statusRailRef} className="mt-6">
             <ProgressRail
               results={results}
-              judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
+              judgeStatus={synthesisStatus}
               optimizeSeconds={optimizeSeconds}
+              judgeSeconds={judgeSeconds}
             />
           </section>
         ) : null}
@@ -476,11 +498,12 @@ export default function Home() {
                 rankings={rankings}
                 results={visibleResults}
                 judgeSummary={judgeSummary}
-                judgeStatus={phase === 'judging' ? 'running' : rankings.length > 0 ? 'done' : 'idle'}
+                judgeStatus={synthesisStatus}
                 synthesizedBestPrompt={synthesizedBestPrompt}
                 synthesisRationale={synthesisRationale}
                 appliedAdvantages={appliedAdvantages}
                 nowMs={nowMs}
+                judgeSeconds={judgeSeconds}
               />
 
             </div>

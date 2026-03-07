@@ -11,6 +11,7 @@ interface RankingListProps {
   results: OptimizedResult[];
   judgeSummary: string;
   judgeStatus: 'idle' | 'running' | 'done';
+  judgeSeconds: number;
   synthesizedBestPrompt: string;
   synthesisRationale: string;
   appliedAdvantages: string[];
@@ -22,6 +23,7 @@ export function RankingList({
   results,
   judgeSummary,
   judgeStatus,
+  judgeSeconds,
   synthesizedBestPrompt,
   synthesisRationale,
   appliedAdvantages,
@@ -61,7 +63,7 @@ export function RankingList({
               {judgeStatus === 'running' ? (
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(214,185,139,0.18)] bg-[rgba(214,185,139,0.08)] px-3 py-2 text-sm text-[var(--accent-strong)]">
                   <span className="size-2 rounded-full bg-[var(--accent)] animate-pulse" />
-                  正在定稿
+                  正在定稿 · {formatSeconds(judgeSeconds)}
                 </div>
               ) : null}
             </div>
@@ -174,4 +176,8 @@ export function RankingList({
       </div>
     </div>
   );
+}
+
+function formatSeconds(value: number) {
+  return `${(value * 0.7).toFixed(1)} 秒`;
 }
