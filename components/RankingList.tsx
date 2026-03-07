@@ -55,6 +55,13 @@ export function RankingList({
     synthesisCandidateCount,
     totalCandidateCount,
   });
+  const synthesisSubtitle = getSynthesisSubtitle({
+    judgeStatus,
+    judgeSummary,
+    synthesisStage,
+    synthesisCandidateCount,
+    totalCandidateCount,
+  });
 
   return (
     <div className="space-y-6">
@@ -74,11 +81,7 @@ export function RankingList({
               <h3 className="mt-2 text-[32px] font-semibold tracking-[-0.03em] text-[var(--ink-strong)]">
                 {judgeStatus === 'done' ? '综合最佳版本' : '综合最佳版本正在生成'}
               </h3>
-              <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">
-                {judgeStatus === 'done'
-                  ? judgeSummary
-                  : '四路候选已收齐，Kimi 正在融合最优结构、约束和输出格式。'}
-              </p>
+              <p className="mt-2 text-sm leading-6 text-[var(--ink-soft)]">{synthesisSubtitle}</p>
               {judgeStatus === 'running' ? (
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-[rgba(214,185,139,0.18)] bg-[rgba(214,185,139,0.08)] px-3 py-2 text-sm text-[var(--accent-strong)]">
                   <span className="size-2 rounded-full bg-[var(--accent)] animate-pulse" />
@@ -259,4 +262,46 @@ function getSynthesisHint({
   }
 
   return null;
+}
+
+function getSynthesisSubtitle({
+  judgeStatus,
+  judgeSummary,
+  synthesisStage,
+  synthesisCandidateCount,
+  totalCandidateCount,
+}: {
+  judgeStatus: 'idle' | 'running' | 'done';
+  judgeSummary: string;
+  synthesisStage: 'idle' | 'drafting' | 'draft_ready' | 'upgrading' | 'final';
+  synthesisCandidateCount: number;
+  totalCandidateCount: number;
+}) {
+  if (judgeStatus === 'done' && judgeSummary) {
+    return judgeSummary;
+  }
+
+  const remaining = Math.max(totalCandidateCount - synthesisCandidateCount, 0);
+
+  if (synthesisStage === 'drafting') {
+    return `已收到 ${Math.max(synthesisCandidateCount, 2)} 路候选，Kimi 正在先生成可用首版。`;
+  }
+
+  if (synthesisStage === 'draft_ready') {
+    return remaining > 0
+      ? `首版已经可用，系统会继续等待剩余 ${remaining} 路并自动补强。`
+      : '当前候选已经收齐，这份综合稿可以直接使用。';
+  }
+
+  if (synthesisStage === 'upgrading') {
+    return remaining > 0
+      ? `新增候选正在纳入，升级后仍会继续等待剩余 ${remaining} 路。`
+      : '最后一轮候选已到，Kimi 正在升级为更完整的终版。';
+  }
+
+  if (synthesisStage === 'final') {
+    return `共纳入 ${synthesisCandidateCount} 路候选，当前展示的是更完整的终版综合稿。`;
+  }
+
+  return 'Kimi 正在融合最优结构、约束和输出格式。';
 }
