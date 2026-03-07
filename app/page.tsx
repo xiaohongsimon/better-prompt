@@ -59,6 +59,7 @@ export default function Home() {
   const [critiqueSeconds, setCritiqueSeconds] = useState(0);
   const [optimizeSeconds, setOptimizeSeconds] = useState(0);
   const [judgeSeconds, setJudgeSeconds] = useState(0);
+  const [nowMs, setNowMs] = useState(0);
   const startedAtRef = useRef<number | null>(null);
   const judgeStartedAtRef = useRef<number | null>(null);
   const raceRankRef = useRef(0);
@@ -80,6 +81,7 @@ export default function Home() {
 
     const timer = window.setInterval(() => {
       const now = performance.now();
+      setNowMs(now);
 
       if (startedAtRef.current) {
         const elapsed = (now - startedAtRef.current) / 1000;
@@ -136,7 +138,8 @@ export default function Home() {
         strategySummary: '',
         keyUpgrades: [],
         applicableScenarios: [],
-        status: 'pending',
+        status: 'streaming',
+        startedAtMs: performance.now(),
       }))
     );
 
@@ -155,6 +158,7 @@ export default function Home() {
                   ? {
                       ...item,
                       status: 'streaming',
+                      startedAtMs: item.startedAtMs ?? performance.now(),
                       optimizedPrompt: `${item.optimizedPrompt}${delta}`,
                     }
                   : item
@@ -170,6 +174,10 @@ export default function Home() {
                       ...item,
                       ...result,
                       status: 'done',
+                      latencyMs:
+                        item.startedAtMs != null
+                          ? Math.round(performance.now() - item.startedAtMs)
+                          : result.latencyMs,
                       completionRank: raceRankRef.current,
                     }
                   : item
@@ -406,6 +414,7 @@ export default function Home() {
                 synthesizedBestPrompt={synthesizedBestPrompt}
                 synthesisRationale={synthesisRationale}
                 appliedAdvantages={appliedAdvantages}
+                nowMs={nowMs}
               />
 
               <PromptCritiquePanel loading={critiqueLoading} critique={critique} />

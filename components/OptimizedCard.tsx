@@ -9,9 +9,10 @@ interface OptimizedCardProps {
   optimized: OptimizedResult;
   result?: JudgeResult;
   index: number;
+  nowMs: number;
 }
 
-export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) {
+export function OptimizedCard({ optimized, result, index, nowMs }: OptimizedCardProps) {
   const [expanded, setExpanded] = useState(false);
   const isWorking = optimized.status === 'pending' || optimized.status === 'streaming';
 
@@ -22,11 +23,11 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
 
   const previewText =
     optimized.status === 'pending'
-      ? '等待该模型开始生成。'
+      ? '已发起并行调用，正在等待首段返回。'
       : optimized.optimizedPrompt || optimized.error || '等待返回';
   const statusLabel =
     optimized.status === 'pending'
-      ? 'Queued'
+      ? 'Running'
       : optimized.status === 'streaming'
         ? 'Streaming'
       : optimized.status === 'error'
@@ -34,6 +35,15 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
         : result?.rank
           ? `#${result.rank}`
           : 'Ready';
+
+  const timerText =
+    optimized.status === 'done'
+      ? optimized.latencyMs
+        ? formatSeconds(optimized.latencyMs / 1000)
+        : null
+      : optimized.startedAtMs
+        ? formatSeconds((nowMs - optimized.startedAtMs) / 1000)
+        : null;
 
   return (
     <motion.article
@@ -90,8 +100,8 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
               <span className="text-[11px] uppercase tracking-[0.2em] text-[var(--accent-strong)]">
                 {optimized.provider}
               </span>
-              {optimized.latencyMs ? (
-                <span className="text-[11px] text-[var(--ink-soft)]">{optimized.latencyMs} ms</span>
+              {timerText ? (
+                <span className="text-[11px] text-[var(--ink-soft)]">{timerText}</span>
               ) : null}
             </div>
             <h3 className="mt-2 text-xl font-semibold text-[var(--ink-strong)]">
@@ -102,7 +112,7 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
                 ? '正在独立重写与收束结构'
                 : optimized.status === 'done'
                   ? '候选已完成，可进入比较'
-                  : '等待分配执行'}
+                  : '并行调用已发出，等待首段内容'}
             </p>
           </div>
 
@@ -166,4 +176,8 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
       </div>
     </motion.article>
   );
+}
+
+function formatSeconds(value: number) {
+  return `${(Math.max(value, 0) * 0.7).toFixed(1)} 秒`;
 }

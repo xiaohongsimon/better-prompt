@@ -58,6 +58,7 @@ export interface OptimizedResult {
   keyUpgrades: string[];
   applicableScenarios: string[];
   status?: 'pending' | 'streaming' | 'done' | 'error';
+  startedAtMs?: number;
   latencyMs?: number;
   completionRank?: number;
   rawText?: string;

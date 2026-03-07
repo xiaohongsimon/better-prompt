@@ -14,6 +14,7 @@ interface RankingListProps {
   synthesizedBestPrompt: string;
   synthesisRationale: string;
   appliedAdvantages: string[];
+  nowMs: number;
 }
 
 export function RankingList({
@@ -24,6 +25,7 @@ export function RankingList({
   synthesizedBestPrompt,
   synthesisRationale,
   appliedAdvantages,
+  nowMs,
 }: RankingListProps) {
   const [expanded, setExpanded] = useState(false);
   const rankingMap = new Map(rankings.map((ranking) => [ranking.model, ranking]));
@@ -149,6 +151,7 @@ export function RankingList({
             optimized={optimized}
             result={rankingMap.get(optimized.model)}
             index={index}
+            nowMs={nowMs}
           />
         )) : (
           <div className="rounded-[24px] border border-[var(--line)] bg-[rgba(255,255,255,0.03)] px-5 py-8 text-sm leading-7 text-[var(--ink-soft)] xl:col-span-2">
