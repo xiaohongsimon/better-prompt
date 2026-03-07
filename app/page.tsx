@@ -65,6 +65,7 @@ export default function Home() {
   const raceRankRef = useRef(0);
   const judgeTriggeredRef = useRef(false);
   const workbenchRef = useRef<HTMLDivElement | null>(null);
+  const statusRailRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -132,7 +133,11 @@ export default function Home() {
     judgeStartedAtRef.current = null;
     setPhase('optimizing');
     requestAnimationFrame(() => {
-      workbenchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const target = statusRailRef.current ?? workbenchRef.current;
+      if (!target) return;
+
+      const top = target.getBoundingClientRect().top + window.scrollY - 16;
+      window.scrollTo({ top, behavior: 'smooth' });
     });
 
     setResults(
@@ -410,7 +415,7 @@ export default function Home() {
         </motion.header>
 
         {phase !== 'idle' ? (
-          <section className="mt-6">
+          <section ref={statusRailRef} className="mt-6">
             <ProgressRail
               results={results}
               critiqueLoading={critiqueLoading}
