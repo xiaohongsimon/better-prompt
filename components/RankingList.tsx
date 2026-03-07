@@ -48,7 +48,7 @@ export function RankingList({
       <motion.section
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        className="rounded-[34px] border border-[rgba(18,28,45,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(243,236,225,0.92))] px-6 py-6 shadow-[0_28px_90px_rgba(24,36,58,0.08)]"
+        className="rounded-[34px] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(208,138,77,0.05))] px-6 py-6 shadow-[0_28px_90px_rgba(0,0,0,0.24)]"
       >
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-4xl">
@@ -74,7 +74,7 @@ export function RankingList({
           <button
             onClick={handleCopySynthesis}
             disabled={!synthesizedBestPrompt}
-            className="inline-flex items-center gap-2 rounded-full border border-[rgba(18,28,45,0.08)] bg-white/78 px-4 py-2 text-sm text-[var(--ink-strong)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm text-[var(--ink-strong)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Copy className="size-4" />
             复制综合稿
@@ -82,7 +82,7 @@ export function RankingList({
         </div>
 
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[28px] bg-[rgba(255,255,255,0.78)] px-5 py-5">
+          <div className="rounded-[28px] bg-[rgba(255,255,255,0.04)] px-5 py-5">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent-strong)]">
               Synthesized Prompt
             </p>
@@ -92,7 +92,7 @@ export function RankingList({
           </div>
 
           <div className="space-y-4">
-            <details className="group rounded-[28px] border border-[rgba(18,28,45,0.08)] bg-white/66 px-5 py-4" open={judgeStatus === 'done'}>
+            <details className="group rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-5 py-4" open={judgeStatus === 'done'}>
               <summary className="cursor-pointer list-none text-sm font-medium text-[var(--ink-strong)]">
                 排名与解释
               </summary>
@@ -101,26 +101,26 @@ export function RankingList({
                   rankings.map((ranking) => (
                     <div
                       key={ranking.model}
-                      className="rounded-2xl border border-[rgba(18,28,45,0.06)] bg-[rgba(247,242,235,0.78)] px-4 py-3"
+                      className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
                     >
                       <span className="font-medium text-[var(--ink-strong)]">#{ranking.rank} {ranking.modelName}</span>
                       <span> · {ranking.score} 分 · {ranking.verdict}</span>
                     </div>
                   ))
                 ) : (
-                  <div className="rounded-2xl border border-[rgba(18,28,45,0.06)] bg-[rgba(247,242,235,0.78)] px-4 py-3">
+                  <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-4 py-3">
                     裁判尚未返回。
                   </div>
                 )}
               </div>
             </details>
 
-            <details className="group rounded-[28px] border border-[rgba(18,28,45,0.08)] bg-white/66 px-5 py-4">
+            <details className="group rounded-[28px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-5 py-4">
               <summary className="cursor-pointer list-none text-sm font-medium text-[var(--ink-strong)]">
                 为什么这样融合
               </summary>
               <div className="mt-4 space-y-3 text-sm leading-6 text-[var(--ink-soft)]">
-                <div className="rounded-2xl border border-[rgba(18,28,45,0.06)] bg-[rgba(247,242,235,0.78)] px-4 py-3">
+                <div className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-4 py-3">
                   {synthesisRationale || '裁判完成后会说明融合逻辑。'}
                 </div>
                 {appliedAdvantages.length > 0 ? (
@@ -128,7 +128,7 @@ export function RankingList({
                     {appliedAdvantages.map((item) => (
                       <div
                         key={item}
-                        className="rounded-2xl border border-[rgba(18,28,45,0.06)] bg-[rgba(247,242,235,0.78)] px-4 py-3"
+                        className="rounded-2xl border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
                       >
                         {item}
                       </div>
@@ -141,7 +141,7 @@ export function RankingList({
         </div>
 
         {failedResults.length > 0 && (
-          <div className="mt-5 rounded-[28px] border border-[rgba(180,58,38,0.12)] bg-[rgba(255,241,237,0.9)] px-5 py-4 text-sm leading-6 text-[rgb(132,39,27)]">
+          <div className="mt-5 rounded-[28px] border border-[rgba(180,58,38,0.18)] bg-[rgba(86,29,20,0.24)] px-5 py-4 text-sm leading-6 text-[rgb(241,187,173)]">
             {failedResults.map((result) => `${result.modelName}: ${result.error}`).join('；')}
           </div>
         )}

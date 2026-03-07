@@ -1,4 +1,9 @@
-import type { JudgePromptPayload, OptimizedResult, OptimizerPromptPayload } from '@/types';
+import type {
+  CritiquePayload,
+  JudgePromptPayload,
+  OptimizedResult,
+  OptimizerPromptPayload,
+} from '@/types';
 
 export const DEFAULT_OPTIMIZER_SYSTEM_PROMPT = `你是一名世界级 Prompt Engineer，专门为高阶大模型任务编写可执行、可控、可复用的专业提示词。你的职责不是润色，而是把用户的原始需求提升成一条真正顶尖的提示词。
 
@@ -84,6 +89,31 @@ export const DEFAULT_JUDGE_SYSTEM_PROMPT = `你是一名世界级 Prompt Review 
   "applied_advantages": ["吸收点1", "吸收点2", "吸收点3"]
 }`;
 
+export const PROMPT_CRITIQUE_SYSTEM_PROMPT = `你是一名顶级 Prompt Coach，负责专业点评“用户原始提示词”的质量，帮助普通用户逐步学会写出更清晰、更专业、更可执行的提示词。
+
+你的任务不是批评用户，而是用用户看得懂的中文指出：
+- 这条提示词已经做对了什么
+- 它还缺什么
+- 为什么这些缺失会影响模型输出
+- 用户下次应该优先改哪几件事
+
+要求：
+- 默认使用中文输出。
+- 语言必须专业但易懂，不能故作高深。
+- 点评必须具体，不能只说“更清晰一点”“更具体一点”。
+- quick_fix_example 必须给出一版简短的就地修正示例，让用户一眼看懂怎么改。
+- 不要输出思维链，不要输出寒暄。
+
+严格按以下 JSON 输出，不要加 Markdown 代码块：
+{
+  "overall_assessment": "一句话总体评价",
+  "score": 72,
+  "strengths": ["优点1", "优点2"],
+  "issues": ["问题1", "问题2", "问题3"],
+  "rewrite_principles": ["建议1", "建议2", "建议3"],
+  "quick_fix_example": "一版简短的示例改写"
+}`;
+
 export function buildOptimizerUserPrompt(originalPrompt: string) {
   return `请优化下面这条原始提示词。
 
@@ -123,6 +153,17 @@ ${originalPrompt}
 ${candidateText}
 
 请严格输出 JSON，并完成评分排序与综合最佳稿输出。`;
+}
+
+export function buildCritiqueUserPrompt(originalPrompt: string) {
+  return `请点评下面这条“用户原始提示词”。
+
+原始提示词：
+"""
+${originalPrompt}
+"""
+
+请站在 Prompt Coach 的角度，输出用户可以直接理解和学习的结构化点评。`;
 }
 
 export function extractJsonObject(text: string) {
@@ -174,5 +215,16 @@ export function normalizeJudgePayload(payload: JudgePromptPayload) {
     synthesizedBestPrompt: payload.synthesized_best_prompt ?? '',
     synthesisRationale: payload.synthesis_rationale ?? '',
     appliedAdvantages: payload.applied_advantages ?? [],
+  };
+}
+
+export function normalizeCritiquePayload(payload: CritiquePayload) {
+  return {
+    overallAssessment: payload.overall_assessment ?? '',
+    score: payload.score ?? 0,
+    strengths: payload.strengths ?? [],
+    issues: payload.issues ?? [],
+    rewritePrinciples: payload.rewrite_principles ?? [],
+    quickFixExample: payload.quick_fix_example ?? '',
   };
 }

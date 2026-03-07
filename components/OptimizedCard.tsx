@@ -36,8 +36,8 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
       transition={{ delay: index * 0.05 }}
       className={`flex h-[360px] flex-col overflow-hidden rounded-[30px] border shadow-[0_22px_70px_rgba(24,36,58,0.07)] ${
         result?.rank === 1
-          ? 'border-[rgba(191,140,52,0.28)] bg-[linear-gradient(180deg,rgba(255,249,238,0.96),rgba(255,255,255,0.96))]'
-          : 'border-[rgba(18,28,45,0.08)] bg-[rgba(255,255,255,0.9)]'
+          ? 'border-[rgba(208,138,77,0.28)] bg-[linear-gradient(180deg,rgba(31,26,22,0.96),rgba(19,22,28,0.96))]'
+          : 'border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)]'
       }`}
     >
       <div className="border-b border-black/5 px-5 py-4">
@@ -70,7 +70,7 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
           <button
             onClick={handleCopy}
             disabled={!optimized.optimizedPrompt || optimized.status === 'pending'}
-            className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(18,28,45,0.08)] bg-white/76 px-3 py-1.5 text-xs text-[var(--ink-strong)] disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1.5 text-xs text-[var(--ink-strong)] disabled:opacity-40"
           >
             <Copy className="size-3.5" />
             复制
@@ -86,7 +86,7 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
 
       <div className="px-5 pb-5">
         <details
-          className="group rounded-[22px] border border-[rgba(18,28,45,0.08)] bg-[rgba(247,242,235,0.7)] px-4 py-3"
+          className="group rounded-[22px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-4 py-3"
           open={false}
         >
           <summary className="flex cursor-pointer list-none items-center justify-between text-sm text-[var(--ink-strong)]">

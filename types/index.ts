@@ -40,6 +40,15 @@ export interface JudgePromptPayload {
   applied_advantages: string[];
 }
 
+export interface CritiquePayload {
+  overall_assessment: string;
+  score: number;
+  strengths: string[];
+  issues: string[];
+  rewrite_principles: string[];
+  quick_fix_example: string;
+}
+
 export interface OptimizedResult {
   model: string;
   modelName: string;
@@ -91,6 +100,15 @@ export interface JudgeResponse {
   synthesizedBestPrompt: string;
   synthesisRationale: string;
   appliedAdvantages: string[];
+}
+
+export interface CritiqueResponse {
+  overallAssessment: string;
+  score: number;
+  strengths: string[];
+  issues: string[];
+  rewritePrinciples: string[];
+  quickFixExample: string;
 }
 
 export interface ApiConfig {

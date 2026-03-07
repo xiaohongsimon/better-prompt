@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Copy, Download, RotateCcw, Settings } from 'lucide-react';
 import { PromptInput } from '@/components/PromptInput';
+import { PromptCritiquePanel } from '@/components/PromptCritiquePanel';
 import { RankingList } from '@/components/RankingList';
 import { SettingsModal } from '@/components/SettingsModal';
 import {
@@ -16,6 +17,7 @@ import {
   DEFAULT_JUDGE_MODEL,
   DEFAULT_OPTIMIZER_MODEL_IDS,
   type ApiConfig,
+  type CritiqueResponse,
   type JudgeResponse,
   type JudgeResult,
   type OptimizedResult,
@@ -48,6 +50,8 @@ export default function Home() {
   const [synthesisRationale, setSynthesisRationale] = useState('');
   const [appliedAdvantages, setAppliedAdvantages] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [critique, setCritique] = useState<CritiqueResponse | null>(null);
+  const [critiqueLoading, setCritiqueLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<ApiConfig>(DEFAULT_CONFIG);
   const [originalPrompt, setOriginalPrompt] = useState('');
@@ -82,6 +86,8 @@ export default function Home() {
 
     setOriginalPrompt(prompt);
     setError(null);
+    setCritique(null);
+    setCritiqueLoading(true);
     setResults(
       config.optimizerModels.map((modelId) => {
         const meta = AVAILABLE_MODELS.find((model) => model.id === modelId);
@@ -103,6 +109,25 @@ export default function Home() {
     setSynthesisRationale('');
     setAppliedAdvantages([]);
     setPhase('optimizing');
+
+    void (async () => {
+      try {
+        const critiqueRes = await fetch('/api/critique', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, config }),
+        });
+        const critiqueData = (await critiqueRes.json()) as CritiqueResponse & { error?: string };
+        if (!critiqueRes.ok) {
+          throw new Error(critiqueData.error || 'Failed to critique prompt');
+        }
+        setCritique(critiqueData);
+      } catch {
+        setCritique(null);
+      } finally {
+        setCritiqueLoading(false);
+      }
+    })();
 
     try {
       const settledResults = await Promise.all(
@@ -220,6 +245,7 @@ export default function Home() {
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'An unexpected error occurred');
       setPhase('idle');
+      setCritiqueLoading(false);
     }
   };
 
@@ -232,6 +258,8 @@ export default function Home() {
     setSynthesizedBestPrompt('');
     setSynthesisRationale('');
     setAppliedAdvantages([]);
+    setCritique(null);
+    setCritiqueLoading(false);
     setPhase('idle');
   };
 
@@ -271,13 +299,13 @@ export default function Home() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[var(--page-bg)] text-[var(--ink-strong)]">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(220,160,94,0.18),transparent_24%),radial-gradient(circle_at_85%_12%,rgba(78,106,137,0.12),transparent_18%),linear-gradient(180deg,#f4efe6_0%,#f1ebe2_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(208,138,77,0.16),transparent_24%),radial-gradient(circle_at_85%_12%,rgba(93,116,144,0.1),transparent_18%),linear-gradient(180deg,#0d1016_0%,#11151d_100%)]" />
 
       <div className="relative mx-auto max-w-[1480px] px-5 py-6 md:px-8 md:py-8">
         <motion.header
           initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-wrap items-start justify-between gap-6 rounded-[36px] border border-white/70 bg-white/58 px-6 py-6 shadow-[0_20px_80px_rgba(22,32,45,0.06)] backdrop-blur"
+          className="flex flex-wrap items-start justify-between gap-6 rounded-[36px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-6 py-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur"
         >
           <div className="max-w-3xl">
             <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-[var(--accent-strong)]">
@@ -295,7 +323,7 @@ export default function Home() {
             <button
               onClick={handleCopyBest}
               disabled={!synthesizedBestPrompt && !bestResult?.optimizedPrompt}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/82 px-4 py-2 text-sm text-[var(--ink-strong)] disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm text-[var(--ink-strong)] disabled:opacity-40"
             >
               <Copy className="size-4" />
               复制最佳版
@@ -303,21 +331,21 @@ export default function Home() {
             <button
               onClick={handleExportMarkdown}
               disabled={results.length === 0}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/82 px-4 py-2 text-sm text-[var(--ink-strong)] disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm text-[var(--ink-strong)] disabled:opacity-40"
             >
               <Download className="size-4" />
               导出
             </button>
             <button
               onClick={handleReset}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/82 px-4 py-2 text-sm text-[var(--ink-strong)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm text-[var(--ink-strong)]"
             >
               <RotateCcw className="size-4" />
               重置
             </button>
             <button
               onClick={() => setShowSettings(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-white/82 px-4 py-2 text-sm text-[var(--ink-strong)]"
+              className="inline-flex items-center gap-2 rounded-full border border-[var(--line)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm text-[var(--ink-strong)]"
             >
               <Settings className="size-4" />
               设置
@@ -325,18 +353,22 @@ export default function Home() {
           </div>
         </motion.header>
 
-        <section className="mt-6 rounded-[36px] border border-white/70 bg-white/62 p-6 shadow-[0_20px_80px_rgba(22,32,45,0.06)] backdrop-blur">
-          <PromptInput
-            onSubmit={handleSubmit}
-            isLoading={phase === 'optimizing' || phase === 'judging'}
-            footer={
-              <div className="rounded-[26px] border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
-                {isProduction
-                  ? '公开访问模式启用服务端密钥保护与限流，用户端不会接触百炼 API Key。'
-                  : '开发模式下可使用本地配置或服务端环境变量。'}
-              </div>
-            }
-          />
+        <section className="mt-6 grid gap-6 xl:grid-cols-[1.28fr_0.72fr]">
+          <div className="rounded-[36px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur">
+            <PromptInput
+              onSubmit={handleSubmit}
+              isLoading={phase === 'optimizing' || phase === 'judging'}
+              footer={
+                <div className="rounded-[26px] border border-[var(--line)] bg-[var(--panel-soft)] px-4 py-4 text-sm leading-6 text-[var(--ink-soft)]">
+                  {isProduction
+                    ? '公开访问模式启用服务端密钥保护与限流，用户端不会接触百炼 API Key。'
+                    : '开发模式下可使用本地配置或服务端环境变量。'}
+                </div>
+              }
+            />
+          </div>
+
+          <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
         </section>
 
         <section className="mt-6">
@@ -357,7 +389,7 @@ export default function Home() {
               appliedAdvantages={appliedAdvantages}
             />
           ) : (
-            <div className="rounded-[34px] border border-dashed border-[var(--line)] bg-white/36 px-8 py-16 text-center text-sm leading-7 text-[var(--ink-soft)]">
+            <div className="rounded-[34px] border border-dashed border-[var(--line)] bg-[rgba(255,255,255,0.02)] px-8 py-16 text-center text-sm leading-7 text-[var(--ink-soft)]">
               结果区会先展示四个模型卡片，再在最下方给出 Kimi 的排序与综合版本。
             </div>
           )}
