@@ -86,9 +86,11 @@ export function RankingList({
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent-strong)]">
               Synthesized Prompt
             </p>
-            <p className="mt-3 whitespace-pre-wrap text-[15px] leading-8 text-[var(--ink-strong)]">
+            <div className="mt-3 max-h-[420px] overflow-y-auto pr-1">
+              <p className="whitespace-pre-wrap text-[15px] leading-8 text-[var(--ink-strong)]">
               {synthesizedBestPrompt || '裁判完成后会在这里输出综合最佳版本。'}
-            </p>
+              </p>
+            </div>
           </div>
 
           <div className="space-y-4">

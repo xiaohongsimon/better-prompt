@@ -78,8 +78,8 @@ export function OptimizedCard({ optimized, result, index }: OptimizedCardProps) 
         </div>
       </div>
 
-      <div className="flex-1 px-5 py-4">
-        <p className="line-clamp-[11] whitespace-pre-wrap text-[14px] leading-7 text-[var(--ink-strong)]">
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        <p className="whitespace-pre-wrap text-[14px] leading-7 text-[var(--ink-strong)]">
           {previewText}
         </p>
       </div>

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Copy, Download, RotateCcw, Settings } from 'lucide-react';
 import { PromptInput } from '@/components/PromptInput';
 import { PromptCritiquePanel } from '@/components/PromptCritiquePanel';
+import { ProgressRail } from '@/components/ProgressRail';
 import { RankingList } from '@/components/RankingList';
 import { SettingsModal } from '@/components/SettingsModal';
 import {
@@ -353,7 +354,7 @@ export default function Home() {
           </div>
         </motion.header>
 
-        <section className={`mt-6 grid gap-6 ${phase === 'idle' ? 'xl:grid-cols-1' : 'xl:grid-cols-[1.28fr_0.72fr]'}`}>
+        <section className={`mt-6 grid gap-6 ${phase === 'idle' ? 'xl:grid-cols-1' : 'xl:grid-cols-[0.52fr_1.48fr]'}`}>
           <div className="rounded-[36px] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-6 shadow-[0_20px_80px_rgba(0,0,0,0.22)] backdrop-blur">
             <PromptInput
               onSubmit={handleSubmit}
@@ -369,7 +370,16 @@ export default function Home() {
           </div>
 
           {phase !== 'idle' ? (
-            <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
+            <div className="space-y-6">
+              <ProgressRail
+                critiqueLoading={critiqueLoading}
+                critiqueReady={Boolean(critique)}
+                completedModels={results.filter((item) => item.status === 'done' || item.status === 'error').length}
+                totalModels={config.optimizerModels.length}
+                judgeStatus={phase === 'judging' ? 'running' : phase === 'done' ? 'done' : 'idle'}
+              />
+              <PromptCritiquePanel loading={critiqueLoading} critique={critique} />
+            </div>
           ) : null}
         </section>
 

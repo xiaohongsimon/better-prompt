@@ -168,14 +168,14 @@ ${originalPrompt}
 
 export function extractJsonObject(text: string) {
   const fenced = text.match(/```json\s*([\s\S]*?)```/i);
-  const candidate = fenced?.[1] ?? text;
-  const match = candidate.match(/\{[\s\S]*\}/);
+  const candidate = (fenced?.[1] ?? text).trim();
+  const extracted = extractBalancedJson(candidate);
 
-  if (!match) {
+  if (!extracted) {
     throw new Error('Model response did not contain a JSON object');
   }
 
-  return JSON.parse(match[0]);
+  return parseJsonWithRepair(extracted);
 }
 
 export function parseOptimizerResponse(text: string): OptimizerPromptPayload {
@@ -227,4 +227,56 @@ export function normalizeCritiquePayload(payload: CritiquePayload) {
     rewritePrinciples: payload.rewrite_principles ?? [],
     quickFixExample: payload.quick_fix_example ?? '',
   };
+}
+
+function extractBalancedJson(text: string) {
+  const start = text.indexOf('{');
+  if (start === -1) return '';
+
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === '\\') {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (char === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (char === '{') depth += 1;
+    if (char === '}') depth -= 1;
+
+    if (depth === 0) {
+      return text.slice(start, i + 1);
+    }
+  }
+
+  return text.slice(start);
+}
+
+function parseJsonWithRepair(input: string) {
+  try {
+    return JSON.parse(input);
+  } catch {
+    const repaired = input
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(/[\u0000-\u0019]+/g, ' ');
+
+    return JSON.parse(repaired);
+  }
 }

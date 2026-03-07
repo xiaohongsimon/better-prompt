@@ -39,7 +39,7 @@ export function PromptCritiquePanel({ loading, critique }: PromptCritiquePanelPr
           <div className="h-18 rounded-[22px] bg-[rgba(255,255,255,0.04)]" />
         </div>
       ) : critique ? (
-        <div className="mt-5 space-y-4">
+        <div className="mt-5 max-h-[720px] space-y-4 overflow-y-auto pr-1">
           <PanelBlock title={`总体判断 · ${critique.score}/100`}>
             {critique.overallAssessment}
           </PanelBlock>
